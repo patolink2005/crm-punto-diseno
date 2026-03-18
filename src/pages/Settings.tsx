@@ -21,19 +21,19 @@ export function Settings() {
   const createMutation = useMutation({
     mutationFn: pipelineService.createStage,
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['pipeline-stages'] }); setNewName(''); setNewSlug(''); },
-    onError: (err: any) => alert('Error: ' + err.message)
+    onError: (err: any) => alert('Error al crear etapa: ' + err.message)
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: Partial<PipelineStage> }) => pipelineService.updateStage(id, updates),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['pipeline-stages'] }); setEditingId(null); },
-    onError: (err: any) => alert('Error: ' + err.message)
+    onError: (err: any) => alert('Error al actualizar etapa: ' + err.message)
   });
 
   const deleteMutation = useMutation({
     mutationFn: pipelineService.deleteStage,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pipeline-stages'] }),
-    onError: (err: any) => alert('Error: ' + err.message)
+    onError: (err: any) => alert('Error al eliminar etapa: ' + err.message)
   });
 
   const reorderMutation = useMutation({

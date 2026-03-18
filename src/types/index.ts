@@ -77,11 +77,13 @@ export interface Order {
 export interface OrderItem {
   id: string;
   order_id: string;
-  product_id: string;
+  product_config_id: string;
   product?: ProductConfig;
-  attributes: Record<string, any>;
+  products_config?: ProductConfig; // Compatibility with legacy joins
+  selected_attributes: Record<string, any>;
   quantity: number;
-  unit_price: number;
-  subtotal: number;
+  calculated_price: number;
   supplier_id?: string;
+  suppliers?: Supplier; // For joins
+  created_at: string;
 }

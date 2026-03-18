@@ -126,14 +126,14 @@ export function OrderDetailModal({ orderId, onClose }: { orderId: string; onClos
                       <tr key={item.id}>
                         <td style={{ fontWeight: 600 }}>{item.products_config?.name || 'Producto'}</td>
                         <td style={{ fontSize: '0.8rem' }} className="text-secondary">
-                          {item.attributes && Object.entries(item.attributes).map(([k, v]) => (
+                          {item.selected_attributes && Object.entries(item.selected_attributes).map(([k, v]) => (
                             <div key={k}>{k}: {String(v)}</div>
                           ))}
                           {item.suppliers?.name && <div style={{ color: 'var(--primary-color)', marginTop: '0.25rem' }}>📦 {item.suppliers.name}</div>}
                         </td>
                         <td>x{item.quantity}</td>
                         <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--success-color)' }}>
-                          {sym}{item.subtotal?.toLocaleString('es-UY')}
+                          {sym}{(item.calculated_price * item.quantity)?.toLocaleString('es-UY')}
                         </td>
                       </tr>
                     ))}
@@ -155,7 +155,7 @@ export function OrderDetailModal({ orderId, onClose }: { orderId: string; onClos
                 className="btn btn-primary" 
                 style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
                 onClick={() => {
-                  if (confirm('¿Archivar este pedido? Se moverá al historial.')) {
+                  if (confirm('¿Deseas archivar este pedido? Se moverá al historial de pedidos finalizados.')) {
                     archiveMutation.mutate(orderId);
                   }
                 }}

@@ -24,13 +24,13 @@ export function Suppliers() {
   const createMutation = useMutation({
     mutationFn: supplierService.create,
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['suppliers'] }); closeModal(); },
-    onError: (error: any) => alert('Error: ' + error.message)
+    onError: (error: any) => alert('Error al crear proveedor: ' + error.message)
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Supplier> }) => supplierService.update(id, data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['suppliers'] }); closeModal(); },
-    onError: (error: any) => alert('Error: ' + error.message)
+    onError: (error: any) => alert('Error al actualizar proveedor: ' + error.message)
   });
 
   const deleteMutation = useMutation({

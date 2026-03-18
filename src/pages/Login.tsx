@@ -81,7 +81,7 @@ export function Login() {
       friendlyName: 'Punto Diseño ' + new Date().getTime()
     });
     if (error) {
-      setError(error.message);
+      setError('Error al configurar 2FA: ' + error.message);
       setLoading(false);
       return;
     }
@@ -145,7 +145,7 @@ export function Login() {
 
     const challenge = await supabase.auth.mfa.challenge({ factorId });
     if (challenge.error) {
-      setError(challenge.error.message);
+      setError('Error en el desafío de seguridad: ' + challenge.error.message);
       setLoading(false);
       return;
     }

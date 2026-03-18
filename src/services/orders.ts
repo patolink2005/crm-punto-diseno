@@ -107,10 +107,14 @@ export const orderService = {
 
     // 3. Insert new items
     if (items.length > 0) {
-      const itemsToInsert = items.map(item => {
-        const { id, created_at, products_config, suppliers, ...rest } = item as any;
-        return { ...rest, order_id: orderId };
-      });
+      const itemsToInsert = items.map(item => ({
+        order_id: orderId,
+        product_config_id: (item as any).product_config_id,
+        selected_attributes: (item as any).selected_attributes,
+        quantity: item.quantity,
+        calculated_price: (item as any).calculated_price,
+        supplier_id: item.supplier_id || null
+      }));
       const { error: insertError } = await supabase
         .from('order_items')
         .insert(itemsToInsert);
@@ -133,7 +137,14 @@ export const orderService = {
     if (error) throw error;
 
     if (items.length > 0) {
-      const itemsToInsert = items.map(item => ({ ...item, order_id: order.id }));
+      const itemsToInsert = items.map(item => ({
+        order_id: order.id,
+        product_config_id: (item as any).product_config_id,
+        selected_attributes: (item as any).selected_attributes,
+        quantity: item.quantity,
+        calculated_price: (item as any).calculated_price,
+        supplier_id: item.supplier_id || null
+      }));
       const { error: itemsError } = await supabase.from('order_items').insert(itemsToInsert);
       if (itemsError) {
         console.error("Error inserting items, deleting order...", itemsError);

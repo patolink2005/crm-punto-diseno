@@ -69,7 +69,9 @@ export function OrderEditorModal({ orderId, onClose }: OrderEditorModalProps) {
       const mappedItems = existingOrder.items?.map((it: any) => ({
         ...it,
         _productName: it.products_config?.name,
-        _supplierName: it.suppliers?.name
+        _supplierName: it.suppliers?.name,
+        // Ensure UI uses calculated properties
+        total: it.calculated_price * it.quantity
       })) || [];
       setItems(mappedItems);
     }
@@ -103,11 +105,10 @@ export function OrderEditorModal({ orderId, onClose }: OrderEditorModalProps) {
     const supplier = suppliers?.find(s => s.id === itemSupplierId);
     
     setItems([...items, {
-      product_id: selectedProductConfig.id,
-      attributes: itemAttributes,
+      product_config_id: selectedProductConfig.id,
+      selected_attributes: itemAttributes,
       quantity: itemQuantity,
-      unit_price: calculatedDisplayPrice / itemQuantity,
-      subtotal: calculatedDisplayPrice,
+      calculated_price: calculatedDisplayPrice / itemQuantity,
       supplier_id: itemSupplierId || null,
       _productName: selectedProductConfig.name,
       _supplierName: supplier?.name
@@ -124,7 +125,7 @@ export function OrderEditorModal({ orderId, onClose }: OrderEditorModalProps) {
     setItems(items.filter((_, i) => i !== index));
   };
 
-  const totalAmount = items.reduce((acc, curr) => acc + (curr.subtotal || 0), 0);
+  const totalAmount = items.reduce((acc, curr) => acc + ((curr.calculated_price * curr.quantity) || 0), 0);
 
   const saveMutation = useMutation({
     mutationFn: (data: any) => isEdit 
@@ -155,11 +156,10 @@ export function OrderEditorModal({ orderId, onClose }: OrderEditorModalProps) {
         exchange_rate: currency === 'USD' ? effectiveExchangeRate : 1
       },
       items: items.map(it => ({
-        product_id: it.product_id,
-        attributes: it.attributes,
+        product_config_id: it.product_config_id,
+        selected_attributes: it.selected_attributes,
         quantity: it.quantity,
-        unit_price: it.unit_price,
-        subtotal: it.subtotal,
+        calculated_price: it.calculated_price,
         supplier_id: it.supplier_id
       }))
     };
@@ -289,12 +289,12 @@ export function OrderEditorModal({ orderId, onClose }: OrderEditorModalProps) {
                       items.map((it, idx) => (
                         <tr key={idx}>
                           <td style={{ fontWeight: 500 }}>{it._productName}</td>
-                          <td className="text-xs text-secondary">
-                             {Object.entries(it.attributes || {}).map(([k, v]) => `${k}: ${v}`).join(', ')}
-                             {it._supplierName && <div style={{ color: 'var(--primary-color)' }}>📦 {it._supplierName}</div>}
-                          </td>
-                          <td>x{it.quantity}</td>
-                          <td style={{ textAlign: 'right', fontWeight: 600 }}>{currency === 'USD' ? 'U$S' : '$'}{it.subtotal?.toLocaleString('es-UY', {minimumFractionDigits: 2})}</td>
+                           <td className="text-xs text-secondary">
+                              {Object.entries(it.selected_attributes || {}).map(([k, v]) => `${k}: ${v}`).join(', ')}
+                              {it._supplierName && <div style={{ color: 'var(--primary-color)' }}>📦 {it._supplierName}</div>}
+                           </td>
+                           <td>x{it.quantity}</td>
+                           <td style={{ textAlign: 'right', fontWeight: 600 }}>{currency === 'USD' ? 'U$S' : '$'}{(it.calculated_price * it.quantity)?.toLocaleString('es-UY', {minimumFractionDigits: 2})}</td>
                           <td>
                             <button type="button" className="btn-close text-danger" onClick={() => handleRemoveItem(idx)}><Trash2 size={16} /></button>
                           </td>
