@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-import { Shield, ShieldAlert, UserCog, UserPlus, X, Info } from 'lucide-react';
+import { Shield, ShieldAlert, UserCog, UserPlus, X, Info, Lock, Unlock } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import './Clients.css'; // Reuse common responsive styles
 
@@ -43,6 +43,26 @@ export function Users() {
     }
   });
 
+  const updateMfaMutation = useMutation({
+    mutationFn: async ({ id, enabled }: { id: string, enabled: boolean }) => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ mfa_enabled: enabled })
+        .eq('id', id)
+        .select()
+        .single();
+        
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
+    },
+    onError: (err: any) => {
+      alert('Error al actualizar seguridad: ' + err.message);
+    }
+  });
+
   const handleRoleChange = (id: string, currentRole: string) => {
     if (id === currentUser?.id) {
       alert('No puedes cambiar tu propio rol por seguridad.');
@@ -52,6 +72,13 @@ export function Users() {
     
     if (window.confirm(`¿Estás seguro de convertir esta cuenta en ${newRole.toUpperCase()}?`)) {
       updateRoleMutation.mutate({ id, newRole });
+    }
+  };
+
+  const handleMfaToggle = (id: string, currentlyEnabled: boolean) => {
+    const action = currentlyEnabled ? 'desactivar' : 'activar';
+    if (window.confirm(`¿Quieres ${action} la verificación de dos pasos (2FA)?`)) {
+      updateMfaMutation.mutate({ id, enabled: !currentlyEnabled });
     }
   };
 
@@ -84,7 +111,7 @@ export function Users() {
               <div style={{ background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.3)', borderRadius: 'var(--radius-md)', padding: '1rem', marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
                 <Info size={18} style={{ flexShrink: 0, color: 'var(--primary-color)', marginTop: '2px' }} />
                 <div className="text-sm">
-                  Usa autenticación 2FA obligatoria para mayor seguridad.
+                  La autenticación 2FA es opcional y cada usuario puede activarla desde esta pantalla.
                 </div>
               </div>
             </div>
@@ -104,6 +131,7 @@ export function Users() {
               <tr>
                 <th>Nombre</th>
                 <th>Rol Actual</th>
+                <th>Seguridad 2FA</th>
                 <th>Miembro Desde</th>
                 <th>Acciones</th>
               </tr>
@@ -138,18 +166,40 @@ export function Users() {
                       </span>
                     )}
                   </td>
+                  <td>
+                    {profile.mfa_enabled ? (
+                      <span className="badge-role" style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success-color)' }}>
+                        <Lock size={14} style={{ marginRight: '0.25rem' }} /> Protegido
+                      </span>
+                    ) : (
+                      <span className="badge-role" style={{ background: 'rgba(107, 114, 128, 0.1)', color: 'var(--color-text-secondary)' }}>
+                        <Unlock size={14} style={{ marginRight: '0.25rem' }} /> Básico
+                      </span>
+                    )}
+                  </td>
                   <td className="text-secondary">
                     {new Date(profile.created_at).toLocaleDateString('es-UY')}
                   </td>
-                  <td>
-                    <button 
-                      className="btn btn-outline" 
-                      style={{ padding: '0.25rem 0.5rem' }}
-                      disabled={profile.id === currentUser?.id || updateRoleMutation.isPending}
-                      onClick={() => handleRoleChange(profile.id, profile.role)}
-                    >
-                      <Shield size={16} /> Cambiar Rol
-                    </button>
+                  <td style={{ display: 'flex', gap: '0.5rem' }}>
+                    {profile.id === currentUser?.id ? (
+                      <button 
+                        className={`btn ${profile.mfa_enabled ? 'btn-outline' : 'btn-primary'}`}
+                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                        onClick={() => handleMfaToggle(profile.id, !!profile.mfa_enabled)}
+                        disabled={updateMfaMutation.isPending}
+                      >
+                        {profile.mfa_enabled ? 'Desactivar 2FA' : 'Activar 2FA'}
+                      </button>
+                    ) : (
+                      <button 
+                        className="btn btn-outline" 
+                        style={{ padding: '0.25rem 0.5rem' }}
+                        disabled={updateRoleMutation.isPending}
+                        onClick={() => handleRoleChange(profile.id, profile.role)}
+                      >
+                        <Shield size={16} /> Rol
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -177,7 +227,14 @@ export function Users() {
                     </div>
                     <div>
                       <div style={{ fontWeight: 600 }}>{profile.full_name || 'Sin Nombre'}</div>
-                      {profile.id === currentUser?.id && <span className="badge-role" style={{ fontSize: '0.65rem', background: 'rgba(99,102,241,0.15)', color: 'var(--primary-color)' }}>Tú</span>}
+                      <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.25rem' }}>
+                        {profile.id === currentUser?.id && <span className="badge-role" style={{ fontSize: '0.6rem', background: 'rgba(99,102,241,0.15)', color: 'var(--primary-color)' }}>Tú</span>}
+                        {profile.mfa_enabled ? (
+                          <span className="badge-role" style={{ fontSize: '0.6rem', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success-color)' }}>2FA ON</span>
+                        ) : (
+                          <span className="badge-role" style={{ fontSize: '0.6rem', background: 'rgba(107, 114, 128, 0.1)', color: 'var(--color-text-secondary)' }}>2FA OFF</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   {profile.role === 'admin' ? (
@@ -188,14 +245,26 @@ export function Users() {
                 </div>
                 {profile.email && <div className="text-secondary text-sm" style={{ marginBottom: '1rem', wordBreak: 'break-all' }}>{profile.email}</div>}
                 
-                <button 
-                  className="btn btn-outline" 
-                  style={{ width: '100%' }}
-                  disabled={profile.id === currentUser?.id || updateRoleMutation.isPending}
-                  onClick={() => handleRoleChange(profile.id, profile.role)}
-                >
-                  <Shield size={16} /> Cambiar Nivel de Acceso
-                </button>
+                {profile.id === currentUser?.id ? (
+                  <button 
+                    className={`btn ${profile.mfa_enabled ? 'btn-outline' : 'btn-primary'}`}
+                    style={{ width: '100%' }}
+                    onClick={() => handleMfaToggle(profile.id, !!profile.mfa_enabled)}
+                    disabled={updateMfaMutation.isPending}
+                  >
+                    {profile.mfa_enabled ? <Unlock size={16} /> : <Lock size={16} />} 
+                    {profile.mfa_enabled ? ' Desactivar 2FA' : ' Activar 2FA'}
+                  </button>
+                ) : (
+                  <button 
+                    className="btn btn-outline" 
+                    style={{ width: '100%' }}
+                    disabled={updateRoleMutation.isPending}
+                    onClick={() => handleRoleChange(profile.id, profile.role)}
+                  >
+                    <Shield size={16} /> Cambiar Nivel de Acceso
+                  </button>
+                )}
               </div>
             ))}
           </div>

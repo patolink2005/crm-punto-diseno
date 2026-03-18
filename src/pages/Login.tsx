@@ -19,8 +19,8 @@ export function Login() {
   const [step, setStep] = useState<LoginStep>('CREDENTIALS');
   
   const navigate = useNavigate();
-  const { session, isInitialized } = useAuthStore();
-
+  const { session, isInitialized, profile } = useAuthStore();
+  
   useEffect(() => {
     if (isInitialized && session) {
       checkMfaStatus();
@@ -28,13 +28,19 @@ export function Login() {
   }, [isInitialized, session]);
 
   const checkMfaStatus = async () => {
-    const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (error) {
-      console.error(error);
+    const { data: aalData, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aalError) {
+      console.error(aalError);
       return;
     }
 
-    if (data.currentLevel === 'aal2') {
+    if (aalData.currentLevel === 'aal2') {
+      navigate('/');
+      return;
+    }
+
+    // If MFA is not enabled in profile, just let them in with AAL1
+    if (!profile?.mfa_enabled) {
       navigate('/');
       return;
     }
