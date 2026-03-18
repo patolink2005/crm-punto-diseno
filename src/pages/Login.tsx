@@ -5,7 +5,7 @@ import { useAuthStore } from '../store/authStore';
 import { QRCodeSVG } from 'qrcode.react';
 import './Login.css';
 
-type LoginStep = 'CREDENTIALS' | 'SIGN_UP' | 'SETUP_2FA' | 'CHALLENGE_2FA';
+type LoginStep = 'CREDENTIALS' | 'SIGN_UP' | 'SETUP_2FA' | 'CHALLENGE_2FA' | 'PENDING_APPROVAL';
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -40,8 +40,13 @@ export function Login() {
       return;
     }
 
+    // 0. Check if account is active
+    if (profile && profile.is_active === false) {
+      setStep('PENDING_APPROVAL');
+      return;
+    }
+
     // If MFA is not enabled in profile, just let them in with AAL1
-    // Optional: If profile doesn't exist yet (just registered), navigate home and let them wait for profile
     if (!profile || !profile.mfa_enabled) {
       navigate('/');
       return;
@@ -298,6 +303,27 @@ export function Login() {
                </div>
                <button type="submit" className="btn btn-primary w-full" disabled={loading}>Verificar</button>
              </form>
+           </div>
+        )}
+
+        {step === 'PENDING_APPROVAL' && (
+           <div className="pending-approval text-center">
+             <div className="mb-4" style={{ color: 'var(--primary-color)' }}>
+               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '64px', height: '64px' }}>
+                 <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+               </svg>
+             </div>
+             <h3>Cuenta Pendiente</h3>
+             <p className="text-secondary mb-6">Tu cuenta ha sido creada exitosamente, pero debe ser aprobada por un administrador antes de que puedas acceder al CRM.</p>
+             <button 
+               className="btn btn-outline w-full" 
+               onClick={async () => {
+                 await supabase.auth.signOut();
+                 window.location.reload();
+               }}
+             >
+               Cerrar Sesión
+             </button>
            </div>
         )}
       </div>

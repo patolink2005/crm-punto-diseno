@@ -7,6 +7,7 @@ interface Profile {
   role: 'admin' | 'emprendedora';
   full_name: string;
   mfa_enabled: boolean;
+  is_active: boolean;
 }
 
 interface AuthState {

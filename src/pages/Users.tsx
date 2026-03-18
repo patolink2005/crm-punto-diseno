@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-import { Shield, ShieldAlert, UserCog, UserPlus, X, Info, Lock, Unlock } from 'lucide-react';
+import { Shield, ShieldAlert, UserCog, UserPlus, X, Info, Lock, Unlock, CheckCircle, Ban } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import './Clients.css'; // Reuse common responsive styles
 
@@ -62,6 +62,26 @@ export function Users() {
       alert('Error al actualizar seguridad: ' + err.message);
     }
   });
+  
+  const updateActiveMutation = useMutation({
+    mutationFn: async ({ id, active }: { id: string, active: boolean }) => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ is_active: active })
+        .eq('id', id)
+        .select()
+        .single();
+        
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
+    },
+    onError: (err: any) => {
+      alert('Error al actualizar estado de cuenta: ' + err.message);
+    }
+  });
 
   const handleRoleChange = (id: string, currentRole: string) => {
     if (id === currentUser?.id) {
@@ -79,6 +99,17 @@ export function Users() {
     const action = currentlyEnabled ? 'desactivar' : 'activar';
     if (window.confirm(`¿Quieres ${action} la verificación de dos pasos (2FA)?`)) {
       updateMfaMutation.mutate({ id, enabled: !currentlyEnabled });
+    }
+  };
+
+  const handleActiveToggle = (id: string, currentlyActive: boolean) => {
+    if (id === currentUser?.id) {
+      alert('No puedes desactivar tu propia cuenta.');
+      return;
+    }
+    const action = currentlyActive ? 'desactivar' : 'activar';
+    if (window.confirm(`¿Quieres ${action} esta cuenta? El usuario ${currentlyActive ? 'perderá' : 'recuperará'} el acceso al sistema.`)) {
+      updateActiveMutation.mutate({ id, active: !currentlyActive });
     }
   };
 
@@ -106,7 +137,8 @@ export function Users() {
               <ol style={{ paddingLeft: '1.25rem' }}>
                 <li>Comparte la URL de la aplicación con el nuevo miembro.</li>
                 <li>La persona debe ir a la página de ingreso y hacer clic en <strong>"Regístrate aquí"</strong>.</li>
-                <li>Una vez registrado, aparecerá en esta lista automáticamente para que le asignes un rol (Admin o Emprendedora).</li>
+                <li>Una vez registrado, aparecerá en esta lista con estado <strong>"Pendiente"</strong>.</li>
+                <li><strong>Tú debes activarlo</strong> usando el botón correspondiente para que pueda entrar.</li>
               </ol>
               <div style={{ background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.3)', borderRadius: 'var(--radius-md)', padding: '1rem', marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
                 <Info size={18} style={{ flexShrink: 0, color: 'var(--primary-color)', marginTop: '2px' }} />
@@ -130,9 +162,10 @@ export function Users() {
             <thead>
               <tr>
                 <th>Nombre</th>
-                <th>Rol Actual</th>
+                <th>Rol</th>
                 <th>Seguridad 2FA</th>
-                <th>Miembro Desde</th>
+                <th>Estado Acceso</th>
+                <th>Desde</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -177,6 +210,17 @@ export function Users() {
                       </span>
                     )}
                   </td>
+                  <td>
+                    {profile.is_active ? (
+                      <span className="badge-role" style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success-color)' }}>
+                        <CheckCircle size={14} style={{ marginRight: '0.25rem' }} /> Activo
+                      </span>
+                    ) : (
+                      <span className="badge-role" style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger-color)' }}>
+                        <Ban size={14} style={{ marginRight: '0.25rem' }} /> Inactivo
+                      </span>
+                    )}
+                  </td>
                   <td className="text-secondary">
                     {new Date(profile.created_at).toLocaleDateString('es-UY')}
                   </td>
@@ -191,14 +235,25 @@ export function Users() {
                         {profile.mfa_enabled ? 'Desactivar 2FA' : 'Activar 2FA'}
                       </button>
                     ) : (
-                      <button 
-                        className="btn btn-outline" 
-                        style={{ padding: '0.25rem 0.5rem' }}
-                        disabled={updateRoleMutation.isPending}
-                        onClick={() => handleRoleChange(profile.id, profile.role)}
-                      >
-                        <Shield size={16} /> Rol
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button 
+                          className={`btn ${profile.is_active ? 'btn-outline' : 'btn-primary'}`}
+                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', borderColor: profile.is_active ? 'var(--danger-color)' : undefined, color: profile.is_active ? 'var(--danger-color)' : undefined }}
+                          onClick={() => handleActiveToggle(profile.id, !!profile.is_active)}
+                          disabled={updateActiveMutation.isPending}
+                        >
+                          {profile.is_active ? 'Desactivar' : 'Activar'}
+                        </button>
+                        <button 
+                          className="btn btn-outline" 
+                          style={{ padding: '0.25rem 0.5rem' }}
+                          disabled={updateRoleMutation.isPending}
+                          onClick={() => handleRoleChange(profile.id, profile.role)}
+                          title="Cambiar Rol"
+                        >
+                          <Shield size={16} />
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -242,6 +297,14 @@ export function Users() {
                   ) : (
                     <span className="badge-role" style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success-color)' }}>Emprendedora</span>
                   )}
+                  <span className="badge-role" style={{ 
+                    background: profile.is_active ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                    color: profile.is_active ? 'var(--success-color)' : 'var(--danger-color)',
+                    marginLeft: '0.5rem',
+                    fontSize: '0.6rem'
+                   }}>
+                    {profile.is_active ? 'Activo' : 'Inactivo'}
+                  </span>
                 </div>
                 {profile.email && <div className="text-secondary text-sm" style={{ marginBottom: '1rem', wordBreak: 'break-all' }}>{profile.email}</div>}
                 
@@ -256,14 +319,24 @@ export function Users() {
                     {profile.mfa_enabled ? ' Desactivar 2FA' : ' Activar 2FA'}
                   </button>
                 ) : (
-                  <button 
-                    className="btn btn-outline" 
-                    style={{ width: '100%' }}
-                    disabled={updateRoleMutation.isPending}
-                    onClick={() => handleRoleChange(profile.id, profile.role)}
-                  >
-                    <Shield size={16} /> Cambiar Nivel de Acceso
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button 
+                      className={`btn ${profile.is_active ? 'btn-outline' : 'btn-primary'}`}
+                      style={{ flex: 1, borderColor: profile.is_active ? 'var(--danger-color)' : undefined, color: profile.is_active ? 'var(--danger-color)' : undefined }}
+                      onClick={() => handleActiveToggle(profile.id, !!profile.is_active)}
+                      disabled={updateActiveMutation.isPending}
+                    >
+                      {profile.is_active ? 'Desactivar' : 'Activar'}
+                    </button>
+                    <button 
+                      className="btn btn-outline" 
+                      style={{ flex: 1 }}
+                      disabled={updateRoleMutation.isPending}
+                      onClick={() => handleRoleChange(profile.id, profile.role)}
+                    >
+                      <Shield size={16} /> Rol
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
