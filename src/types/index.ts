@@ -34,14 +34,21 @@ export interface ProductAttribute {
   options?: string[]; // Para tipo select
 }
 
+export interface VinylRoll {
+  width_cm: number;
+  cost_per_m: number;
+}
+
 export interface PriceRule {
-  type: 'base_modifier' | 'area' | 'volume';
+  type: 'base_modifier' | 'area' | 'volume' | 'vinyl_nesting' | 'custom_cost';
   attribute?: string;
   value?: string;
   price_increase?: number;
   width_attr?: string;
   height_attr?: string;
   price_per_m2?: number;
+  rolls?: VinylRoll[];
+  margin_multiplier?: number;
 }
 
 export interface ProductConfig {

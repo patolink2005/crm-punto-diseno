@@ -79,23 +79,78 @@ export function OrderEditorModal({ orderId, onClose }: OrderEditorModalProps) {
 
   const selectedProductConfig = products?.find(p => p.id === selectedProductId);
 
-  // Dynamic price calculation logic (same as original but cleaner)
-  const calculatedItemPrice = useMemo(() => {
-    if (!selectedProductConfig) return 0;
-    let price = selectedProductConfig.base_price;
+  // Dynamic price calculation logic
+  const { calculatedItemPrice, nestingResult } = useMemo(() => {
+    if (!selectedProductConfig) return { calculatedItemPrice: 0, nestingResult: null };
+    let price = selectedProductConfig.base_price * itemQuantity;
+    let currentNestingResult: any = null;
 
     selectedProductConfig.price_rules?.forEach((rule: any) => {
+      // 1. Base Modifier
       if (rule.type === 'base_modifier' && rule.attribute && itemAttributes[rule.attribute] === rule.value) {
-        price += Number(rule.price_increase || 0);
+        price += Number(rule.price_increase || 0) * itemQuantity;
       }
+      
+      // 2. Area
       if (rule.type === 'area' && rule.width_attr && rule.height_attr) {
         const w = Number(itemAttributes[rule.width_attr] || 0);
         const h = Number(itemAttributes[rule.height_attr] || 0);
-        price += ((w * h) / 10000) * Number(rule.price_per_m2 || 0);
+        price += (((w * h) / 10000) * Number(rule.price_per_m2 || 0)) * itemQuantity;
+      }
+
+      // 3. Custom Cost (Arbitrary third-party cost without quantity multiplier)
+      if (rule.type === 'custom_cost' && rule.attribute && itemAttributes[rule.attribute]) {
+         const extra = Number(itemAttributes[rule.attribute]);
+         if (!isNaN(extra)) price += extra;
+      }
+
+      // 4. Vinyl Nesting (Rollo Óptimo)
+      if (rule.type === 'vinyl_nesting' && rule.width_attr && rule.height_attr && rule.rolls?.length > 0) {
+        const w = Number(itemAttributes[rule.width_attr] || 0);
+        const h = Number(itemAttributes[rule.height_attr] || 0);
+        
+        if (w > 0 && h > 0) {
+           let bestCost = Infinity;
+           let bestResult: any = null;
+           const marginMultiplier = rule.margin_multiplier || 1;
+
+           rule.rolls.forEach((roll: any) => {
+              const orientations = [
+                 { cols: Math.floor(roll.width_cm / w), linear: h, layout: 'Vertical' },
+                 { cols: Math.floor(roll.width_cm / h), linear: w, layout: 'Apaisado' }
+              ];
+
+              orientations.forEach(ori => {
+                 if (ori.cols > 0) {
+                    const rows = Math.ceil(itemQuantity / ori.cols);
+                    const linearMeters = (rows * ori.linear) / 100;
+                    const rollCost = linearMeters * roll.cost_per_m;
+                    const finalPrice = rollCost * marginMultiplier;
+
+                    if (finalPrice < bestCost) {
+                       bestCost = finalPrice;
+                       bestResult = {
+                          bobina: roll.width_cm,
+                          metros_lineales: linearMeters,
+                          orientacion: ori.layout,
+                          piezas_ancho: ori.cols,
+                          filas: rows,
+                          costo_sugerido: finalPrice
+                       };
+                    }
+                 }
+              });
+           });
+
+           if (bestResult) {
+              price += bestResult.costo_sugerido;
+              currentNestingResult = bestResult;
+           }
+        }
       }
     });
 
-    return price * itemQuantity;
+    return { calculatedItemPrice: price, nestingResult: currentNestingResult };
   }, [selectedProductConfig, itemAttributes, itemQuantity]);
 
   const calculatedDisplayPrice = currency === 'USD' ? (calculatedItemPrice / effectiveExchangeRate) : calculatedItemPrice;
@@ -104,9 +159,13 @@ export function OrderEditorModal({ orderId, onClose }: OrderEditorModalProps) {
     if (!selectedProductConfig) return;
     const supplier = suppliers?.find(s => s.id === itemSupplierId);
     
+    const finalAttributes = nestingResult 
+      ? { ...itemAttributes, _Nesting: `Bobina ${nestingResult.bobina}cm | ${nestingResult.metros_lineales.toFixed(2)}ml | ${nestingResult.orientacion}` }
+      : itemAttributes;
+      
     setItems([...items, {
       product_config_id: selectedProductConfig.id,
-      selected_attributes: itemAttributes,
+      selected_attributes: finalAttributes,
       quantity: itemQuantity,
       calculated_price: calculatedDisplayPrice / itemQuantity,
       supplier_id: itemSupplierId || null,
@@ -260,9 +319,21 @@ export function OrderEditorModal({ orderId, onClose }: OrderEditorModalProps) {
                   </div>
                 )}
 
+                {nestingResult && (
+                  <div style={{ marginTop: '1rem', padding: '0.875rem', background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.2)', borderRadius: 'var(--border-radius)', fontSize: '0.875rem' }}>
+                    <div style={{ fontWeight: 600, color: 'var(--primary-color)', marginBottom: '0.5rem' }}>Cálculo Óptimo (Nesting):</div>
+                    <div className="text-secondary" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                      <span>📏 Bobina: <strong>{nestingResult.bobina}cm</strong></span>
+                      <span>✂️ Consumo Lineal: <strong>{nestingResult.metros_lineales.toFixed(2)}m</strong></span>
+                      <span>🔄 Orientación: <strong style={{ textTransform: 'capitalize' }}>{nestingResult.orientacion}</strong></span>
+                      <span>🧩 Piezas transversal: <strong>{nestingResult.piezas_ancho}</strong></span>
+                    </div>
+                  </div>
+                )}
+
                 {selectedProductConfig && (
                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                      <div style={{ fontWeight: 600 }}>Subtotal item: {currency === 'USD' ? 'U$S' : '$'}{calculatedDisplayPrice.toLocaleString('es-UY', {minimumFractionDigits: 2})}</div>
+                      <div style={{ fontWeight: 600 }}>Costo {itemQuantity > 1 ? 'Total' : 'Ítem'}: {currency === 'USD' ? 'U$S' : '$'}{calculatedDisplayPrice.toLocaleString('es-UY', {minimumFractionDigits: 2})}</div>
                       <button type="button" className="btn btn-primary btn-sm" onClick={handleAddItem}>
                         <Plus size={14} /> Añadir Ítem
                       </button>
