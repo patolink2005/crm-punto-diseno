@@ -91,39 +91,45 @@ export function OrderEditorModal({ orderId, onClose }: OrderEditorModalProps) {
   // Dynamic price calculation logic
   const { calculatedItemPrice, nestingResult } = useMemo(() => {
     if (!selectedProductConfig) return { calculatedItemPrice: 0, nestingResult: null };
-    let price = selectedProductConfig.base_price * itemQuantity;
+    // Internal calculations are ALWAYS in UYU for consistency
+    let priceUYU = selectedProductConfig.base_price * itemQuantity;
     let currentNestingResult: any = null;
 
     selectedProductConfig.price_rules?.forEach((rule: any) => {
       // 1. Base Modifier
       if (rule.type === 'base_modifier' && rule.attribute && itemAttributes[rule.attribute] === rule.value) {
-        price += Number(rule.price_increase || 0) * itemQuantity;
+        priceUYU += Number(rule.price_increase || 0) * itemQuantity;
       }
       
       // 2. Area
       if (rule.type === 'area' && rule.width_attr && rule.height_attr) {
         const w = Number(itemAttributes[rule.width_attr] || 0);
         const h = Number(itemAttributes[rule.height_attr] || 0);
-        price += (((w * h) / 10000) * Number(rule.price_per_m2 || 0)) * itemQuantity;
+        priceUYU += (((w * h) / 10000) * Number(rule.price_per_m2 || 0)) * itemQuantity;
       }
 
-      // 3. Custom Cost (Arbitrary third-party cost without quantity multiplier)
+      // 3. Custom Cost (third-party cost, no quantity multiplier)
       if (rule.type === 'custom_cost' && rule.attribute && itemAttributes[rule.attribute]) {
          const extra = Number(itemAttributes[rule.attribute]);
-         if (!isNaN(extra)) price += extra;
+         if (!isNaN(extra)) priceUYU += extra;
       }
 
-      // 4. Vinyl Nesting (Rollo Óptimo)
+      // 4. Vinyl Nesting (Optimal Roll Selection)
       if (rule.type === 'vinyl_nesting' && rule.width_attr && rule.height_attr && rule.rolls?.length > 0) {
         const w = Number(itemAttributes[rule.width_attr] || 0);
         const h = Number(itemAttributes[rule.height_attr] || 0);
         
         if (w > 0 && h > 0) {
-           let bestCost = Infinity;
+           let bestCostUYU = Infinity;
            let bestResult: any = null;
            const marginMultiplier = rule.margin_multiplier || 1;
 
            rule.rolls.forEach((roll: any) => {
+              // Convert roll cost to UYU for a fair comparison
+              const rollCostPerMInUYU = (roll.currency === 'USD')
+                ? roll.cost_per_m * effectiveExchangeRate
+                : roll.cost_per_m;
+
               const orientations = [
                  { cols: Math.floor(roll.width_cm / w), linear: h, layout: 'Vertical' },
                  { cols: Math.floor(roll.width_cm / h), linear: w, layout: 'Apaisado' }
@@ -133,18 +139,19 @@ export function OrderEditorModal({ orderId, onClose }: OrderEditorModalProps) {
                  if (ori.cols > 0) {
                     const rows = Math.ceil(itemQuantity / ori.cols);
                     const linearMeters = (rows * ori.linear) / 100;
-                    const rollCost = linearMeters * roll.cost_per_m;
-                    const finalPrice = rollCost * marginMultiplier;
+                    const rollCostUYU = linearMeters * rollCostPerMInUYU;
+                    const finalPriceUYU = rollCostUYU * marginMultiplier;
 
-                    if (finalPrice < bestCost) {
-                       bestCost = finalPrice;
+                    if (finalPriceUYU < bestCostUYU) {
+                       bestCostUYU = finalPriceUYU;
                        bestResult = {
                           bobina: roll.width_cm,
                           metros_lineales: linearMeters,
                           orientacion: ori.layout,
                           piezas_ancho: ori.cols,
                           filas: rows,
-                          costo_sugerido: finalPrice
+                          roll_currency: roll.currency || 'UYU',
+                          costo_sugerido_uyu: finalPriceUYU
                        };
                     }
                  }
@@ -152,15 +159,15 @@ export function OrderEditorModal({ orderId, onClose }: OrderEditorModalProps) {
            });
 
            if (bestResult) {
-              price += bestResult.costo_sugerido;
+              priceUYU += bestResult.costo_sugerido_uyu;
               currentNestingResult = bestResult;
            }
         }
       }
     });
 
-    return { calculatedItemPrice: price, nestingResult: currentNestingResult };
-  }, [selectedProductConfig, itemAttributes, itemQuantity]);
+    return { calculatedItemPrice: priceUYU, nestingResult: currentNestingResult };
+  }, [selectedProductConfig, itemAttributes, itemQuantity, effectiveExchangeRate]);
 
   const calculatedDisplayPrice = currency === 'USD' ? (calculatedItemPrice / effectiveExchangeRate) : calculatedItemPrice;
 

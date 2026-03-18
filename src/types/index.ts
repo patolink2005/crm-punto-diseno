@@ -37,6 +37,7 @@ export interface ProductAttribute {
 export interface VinylRoll {
   width_cm: number;
   cost_per_m: number;
+  currency?: 'UYU' | 'USD'; // Default: 'UYU'
 }
 
 export interface PriceRule {
