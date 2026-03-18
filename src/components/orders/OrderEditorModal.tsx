@@ -41,21 +41,30 @@ export function OrderEditorModal({ orderId, onClose }: OrderEditorModalProps) {
     enabled: isEdit
   });
 
-  const { data: brouRate } = useQuery({
+  const { data: bcuRate } = useQuery({
     queryKey: ['exchangeRate'],
     queryFn: async () => {
+      // Source 1: dolarito.uy (data from BCU)
+      try {
+        const res = await fetch('https://api.dolarito.uy/api/frontend/usd');
+        const data = await res.json();
+        const sell = data?.bcu?.sell || data?.instituciones?.[0]?.sell;
+        if (sell) return Number(sell);
+      } catch (_) {}
+      // Source 2: BROU fallback
       try {
         const res = await fetch('https://cotizaciones-brou-v2-e449.fly.dev/api/v1/cotizaciones');
         const data = await res.json();
-        return data?.rates?.USD?.sell || 42.5;
-      } catch (e) {
-        return 42.5;
-      }
+        const sell = data?.rates?.USD?.sell;
+        if (sell) return Number(sell);
+      } catch (_) {}
+      // Source 3: hardcoded fallback
+      return 42.5;
     },
-    staleTime: 1000 * 60 * 60,
+    staleTime: 1000 * 60 * 60, // cache 1 hora
   });
 
-  const effectiveExchangeRate = exchangeRateManual || brouRate || 42.5;
+  const effectiveExchangeRate = exchangeRateManual || bcuRate || 42.5;
 
   // Load existing data if editing
   useEffect(() => {
