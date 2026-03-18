@@ -1,0 +1,354 @@
+import { useState, useMemo, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { clientService } from '../../services/clients';
+import { productService } from '../../services/products';
+import { supplierService } from '../../services/suppliers';
+import { orderService } from '../../services/orders';
+import type { OrderStatus } from '../../types';
+import { Plus, Trash2, Save, X, Calculator, User, Package, DollarSign } from 'lucide-react';
+
+interface OrderEditorModalProps {
+  orderId?: string; // If provided, we are in EDIT mode
+  onClose: () => void;
+}
+
+export function OrderEditorModal({ orderId, onClose }: OrderEditorModalProps) {
+  const queryClient = useQueryClient();
+  const isEdit = !!orderId;
+
+  // Form State
+  const [clientId, setClientId] = useState('');
+  const [notes, setNotes] = useState('');
+  const [status, setStatus] = useState<OrderStatus>('nuevo_pedido');
+  const [currency, setCurrency] = useState<'UYU' | 'USD'>('UYU');
+  const [exchangeRateManual, setExchangeRateManual] = useState<number | null>(null);
+  const [items, setItems] = useState<any[]>([]);
+  
+  // New Item State
+  const [selectedProductId, setSelectedProductId] = useState('');
+  const [itemAttributes, setItemAttributes] = useState<Record<string, any>>({});
+  const [itemQuantity, setItemQuantity] = useState(1);
+  const [itemSupplierId, setItemSupplierId] = useState('');
+
+  // Queries
+  const { data: clients } = useQuery({ queryKey: ['clients'], queryFn: clientService.getAll });
+  const { data: products } = useQuery({ queryKey: ['products'], queryFn: productService.getAll });
+  const { data: suppliers } = useQuery({ queryKey: ['suppliers'], queryFn: supplierService.getAll });
+  
+  const { data: existingOrder, isLoading: loadingOrder } = useQuery({
+    queryKey: ['order', orderId],
+    queryFn: () => orderService.getById(orderId!),
+    enabled: isEdit
+  });
+
+  const { data: brouRate } = useQuery({
+    queryKey: ['exchangeRate'],
+    queryFn: async () => {
+      try {
+        const res = await fetch('https://cotizaciones-brou-v2-e449.fly.dev/api/v1/cotizaciones');
+        const data = await res.json();
+        return data?.rates?.USD?.sell || 42.5;
+      } catch (e) {
+        return 42.5;
+      }
+    },
+    staleTime: 1000 * 60 * 60,
+  });
+
+  const effectiveExchangeRate = exchangeRateManual || brouRate || 42.5;
+
+  // Load existing data if editing
+  useEffect(() => {
+    if (existingOrder && isEdit) {
+      setClientId(existingOrder.client_id);
+      setNotes(existingOrder.notes || '');
+      setStatus(existingOrder.status);
+      setCurrency(existingOrder.currency);
+      setExchangeRateManual(existingOrder.exchange_rate || null);
+      
+      const mappedItems = existingOrder.items?.map((it: any) => ({
+        ...it,
+        _productName: it.products_config?.name,
+        _supplierName: it.suppliers?.name
+      })) || [];
+      setItems(mappedItems);
+    }
+  }, [existingOrder, isEdit]);
+
+  const selectedProductConfig = products?.find(p => p.id === selectedProductId);
+
+  // Dynamic price calculation logic (same as original but cleaner)
+  const calculatedItemPrice = useMemo(() => {
+    if (!selectedProductConfig) return 0;
+    let price = selectedProductConfig.base_price;
+
+    selectedProductConfig.price_rules?.forEach((rule: any) => {
+      if (rule.type === 'base_modifier' && rule.attribute && itemAttributes[rule.attribute] === rule.value) {
+        price += Number(rule.price_increase || 0);
+      }
+      if (rule.type === 'area' && rule.width_attr && rule.height_attr) {
+        const w = Number(itemAttributes[rule.width_attr] || 0);
+        const h = Number(itemAttributes[rule.height_attr] || 0);
+        price += ((w * h) / 10000) * Number(rule.price_per_m2 || 0);
+      }
+    });
+
+    return price * itemQuantity;
+  }, [selectedProductConfig, itemAttributes, itemQuantity]);
+
+  const calculatedDisplayPrice = currency === 'USD' ? (calculatedItemPrice / effectiveExchangeRate) : calculatedItemPrice;
+
+  const handleAddItem = () => {
+    if (!selectedProductConfig) return;
+    const supplier = suppliers?.find(s => s.id === itemSupplierId);
+    
+    setItems([...items, {
+      product_id: selectedProductConfig.id,
+      attributes: itemAttributes,
+      quantity: itemQuantity,
+      unit_price: calculatedDisplayPrice / itemQuantity,
+      subtotal: calculatedDisplayPrice,
+      supplier_id: itemSupplierId || null,
+      _productName: selectedProductConfig.name,
+      _supplierName: supplier?.name
+    }]);
+
+    // Reset
+    setSelectedProductId('');
+    setItemAttributes({});
+    setItemQuantity(1);
+    setItemSupplierId('');
+  };
+
+  const handleRemoveItem = (index: number) => {
+    setItems(items.filter((_, i) => i !== index));
+  };
+
+  const totalAmount = items.reduce((acc, curr) => acc + (curr.subtotal || 0), 0);
+
+  const saveMutation = useMutation({
+    mutationFn: (data: any) => isEdit 
+      ? orderService.updateWithItems(orderId!, data.order, data.items)
+      : orderService.createWithItems(data.order, data.items),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['order', orderId] });
+      onClose();
+    },
+    onError: (err: any) => alert('Error al guardar: ' + err.message)
+  });
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!clientId || items.length === 0) return alert('Datos incompletos.');
+
+    const totalUyu = currency === 'USD' ? totalAmount * effectiveExchangeRate : totalAmount;
+
+    const payload = {
+      order: {
+        client_id: clientId,
+        notes,
+        status,
+        currency,
+        total: totalAmount,
+        total_uyu: totalUyu,
+        exchange_rate: currency === 'USD' ? effectiveExchangeRate : 1
+      },
+      items: items.map(it => ({
+        product_id: it.product_id,
+        attributes: it.attributes,
+        quantity: it.quantity,
+        unit_price: it.unit_price,
+        subtotal: it.subtotal,
+        supplier_id: it.supplier_id
+      }))
+    };
+
+    saveMutation.mutate(payload);
+  };
+
+  if (isEdit && loadingOrder) return <div className="modal-overlay"><div className="modal-content">Cargando datos...</div></div>;
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content glass-panel" style={{ maxWidth: '900px', padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '95vh' }}>
+        
+        {/* Header */}
+        <div className="modal-header" style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h3 style={{ margin: 0 }}>{isEdit ? `Editar Pedido #${existingOrder?.order_number}` : 'Nuevo Pedido'}</h3>
+            <p className="text-secondary text-xs" style={{ margin: 0 }}>{isEdit ? 'Modifica cualquier campo del pedido y sus ítems.' : 'Completa los datos para registrar un nuevo pedido.'}</p>
+          </div>
+          <button className="btn-close" onClick={onClose}><X size={20} /></button>
+        </div>
+
+        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          
+          <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
+            
+            {/* Sec: General Info */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+              <div className="form-group">
+                <label className="form-label"><User size={14} /> Cliente</label>
+                <select className="input-base" value={clientId} onChange={e => setClientId(e.target.value)} required>
+                  <option value="">Seleccione cliente...</option>
+                  {clients?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Estado</label>
+                <select className="input-base" value={status} onChange={e => setStatus(e.target.value as any)}>
+                  <option value="nuevo_pedido">Nuevo Pedido</option>
+                  <option value="presupuestado">Presupuestado</option>
+                  <option value="diseno">Diseño</option>
+                  <option value="produccion">Producción</option>
+                  <option value="control_calidad">Control Calidad</option>
+                  <option value="entregado">Entregado</option>
+                  <option value="facturado">Facturado</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Sec: Items list */}
+            <div style={{ marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Package size={18} /> Detalle de Ítems</h4>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                   <button type="button" className={`btn btn-sm ${currency === 'UYU' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setCurrency('UYU')}>$ UYU</button>
+                   <button type="button" className={`btn btn-sm ${currency === 'USD' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setCurrency('USD')}>U$S USD</button>
+                </div>
+              </div>
+
+              {/* Add New Item Sub-form */}
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px dashed var(--color-border)', borderRadius: 'var(--radius-md)', padding: '1rem', marginBottom: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label text-xs">Producto</label>
+                    <select className="input-base" value={selectedProductId} onChange={e => { setSelectedProductId(e.target.value); setItemAttributes({}); }}>
+                      <option value="">Seleccionar...</option>
+                      {products?.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label text-xs">Cant.</label>
+                    <input type="number" min="1" className="input-base" value={itemQuantity} onChange={e => setItemQuantity(Number(e.target.value))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label text-xs">Proveedor</label>
+                    <select className="input-base" value={itemSupplierId} onChange={e => setItemSupplierId(e.target.value)}>
+                      <option value="">🏠 Propio</option>
+                      {suppliers?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {selectedProductConfig && selectedProductConfig.attributes_schema?.length > 0 && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
+                    {selectedProductConfig.attributes_schema.map((attr: any) => (
+                      <div key={attr.name}>
+                        <label className="form-label text-xs">{attr.label || attr.name}</label>
+                        {attr.type === 'select' ? (
+                          <select className="input-base input-sm" value={itemAttributes[attr.name] || ''} onChange={e => setItemAttributes({...itemAttributes, [attr.name]: e.target.value})}>
+                            <option value="">...</option>
+                            {attr.options?.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
+                          </select>
+                        ) : (
+                          <input type={attr.type === 'number' ? 'number' : 'text'} className="input-base input-sm" value={itemAttributes[attr.name] || ''} onChange={e => setItemAttributes({...itemAttributes, [attr.name]: e.target.value})} />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {selectedProductConfig && (
+                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div style={{ fontWeight: 600 }}>Subtotal item: {currency === 'USD' ? 'U$S' : '$'}{calculatedDisplayPrice.toLocaleString('es-UY', {minimumFractionDigits: 2})}</div>
+                      <button type="button" className="btn btn-primary btn-sm" onClick={handleAddItem}>
+                        <Plus size={14} /> Añadir Ítem
+                      </button>
+                   </div>
+                )}
+              </div>
+
+              {/* Items Table */}
+              <div className="table-container" style={{ maxHeight: '300px' }}>
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Producto</th>
+                      <th>Detalles</th>
+                      <th>Cant.</th>
+                      <th style={{ textAlign: 'right' }}>Subtotal</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.length === 0 ? (
+                      <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }} className="text-secondary">No hay ítems en el pedido</td></tr>
+                    ) : (
+                      items.map((it, idx) => (
+                        <tr key={idx}>
+                          <td style={{ fontWeight: 500 }}>{it._productName}</td>
+                          <td className="text-xs text-secondary">
+                             {Object.entries(it.attributes || {}).map(([k, v]) => `${k}: ${v}`).join(', ')}
+                             {it._supplierName && <div style={{ color: 'var(--primary-color)' }}>📦 {it._supplierName}</div>}
+                          </td>
+                          <td>x{it.quantity}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 600 }}>{currency === 'USD' ? 'U$S' : '$'}{it.subtotal?.toLocaleString('es-UY', {minimumFractionDigits: 2})}</td>
+                          <td>
+                            <button type="button" className="btn-close text-danger" onClick={() => handleRemoveItem(idx)}><Trash2 size={16} /></button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Sec: Currency & Notes */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.5rem' }}>
+              <div>
+                <label className="form-label"><DollarSign size={14} /> Cambio USD (Venta)</label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input type="number" step="0.5" className="input-base" value={effectiveExchangeRate} onChange={e => setExchangeRateManual(Number(e.target.value))} />
+                  <button type="button" className="btn btn-outline" style={{ padding: '0.5rem' }} onClick={() => setExchangeRateManual(null)} title="Restaurar BROU">
+                    <Calculator size={16} />
+                  </button>
+                </div>
+                <small className="text-secondary">Afecta solo pedidos en U$S</small>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Notas / Instrucciones</label>
+                <textarea className="input-base" rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Ej: Entregar envuelto para regalo..." />
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div style={{ padding: '1rem 1.5rem', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
+               <span className="text-secondary text-xs" style={{ fontWeight: 500 }}>TOTAL:</span>
+               <div style={{ display: 'flex', flexDirection: 'column' }}>
+                 <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--success-color)', lineHeight: 1 }}>
+                   {currency === 'USD' ? 'U$S' : '$'} {totalAmount.toLocaleString('es-UY', {minimumFractionDigits: 2})}
+                 </div>
+                 {currency === 'USD' && (
+                   <div className="text-secondary" style={{ fontSize: '0.7rem', marginTop: '2px' }}>
+                     ≃ $ {(totalAmount * effectiveExchangeRate).toLocaleString('es-UY')} UYU
+                   </div>
+                 )}
+               </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button type="button" className="btn btn-outline btn-sm" onClick={onClose}>Cancelar</button>
+              <button type="submit" className="btn btn-primary btn-sm" disabled={saveMutation.isPending || items.length === 0}>
+                <Save size={16} /> {saveMutation.isPending ? 'Guardando...' : (isEdit ? 'Guardar' : 'Crear Pedido')}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
