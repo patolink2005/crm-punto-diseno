@@ -14,6 +14,7 @@ export function Catalog() {
 
   const [attributesText, setAttributesText] = useState('[]');
   const [priceRulesText, setPriceRulesText] = useState('[]');
+  const [formError, setFormError] = useState('');
 
   const { data: products, isLoading } = useQuery({
     queryKey: ['products'],
@@ -55,10 +56,16 @@ export function Catalog() {
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingProduct(null);
+    setFormError('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError('');
+    if (!formData.name?.trim()) {
+      setFormError('El nombre del producto no puede estar vacío.');
+      return;
+    }
     try {
       const parsedAttributes = JSON.parse(attributesText);
       const parsedRules = JSON.parse(priceRulesText);
@@ -74,7 +81,7 @@ export function Catalog() {
         createMutation.mutate(submitData);
       }
     } catch (error: any) {
-      alert('Error en formato JSON. Verifica que los corchetes y comillas estén correctos.\n' + error.message);
+      setFormError('Error en formato JSON: ' + error.message);
     }
   };
 
@@ -180,7 +187,13 @@ export function Catalog() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
+              {formError && (
+                <div className="alert-danger" style={{ marginTop: '1rem' }}>
+                  ⚠️ {formError}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
                 <button type="button" className="btn btn-outline" onClick={closeModal}>Cancelar</button>
                 <button type="submit" className="btn btn-primary" disabled={createMutation.isPending || updateMutation.isPending}>
                   {editingProduct ? 'Guardar Cambios' : 'Crear Producto'}
