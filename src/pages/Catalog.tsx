@@ -24,13 +24,13 @@ export function Catalog() {
   const createMutation = useMutation({
     mutationFn: productService.create,
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['products'] }); closeModal(); },
-    onError: (error: any) => { alert('Error al crear el producto: ' + error.message); }
+    onError: (error: any) => { setFormError('Error al crear el producto: ' + error.message); }
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string, data: Partial<ProductConfig> }) => productService.update(id, data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['products'] }); closeModal(); },
-    onError: (error: any) => { alert('Error al actualizar el producto: ' + error.message); }
+    onError: (error: any) => { setFormError('Error al actualizar el producto: ' + error.message); }
   });
 
   const deleteMutation = useMutation({
@@ -124,7 +124,7 @@ export function Catalog() {
                       <button className="btn btn-outline" style={{ padding: '0.25rem 0.5rem' }} onClick={() => openModal(product)}>
                         <Settings size={16} /> Configurar
                       </button>
-                      <button className="btn btn-outline" style={{ padding: '0.25rem 0.5rem', color: 'var(--color-danger)' }} onClick={() => {
+                      <button className="btn btn-outline" style={{ padding: '0.25rem 0.5rem', color: 'var(--danger-color)' }} onClick={() => {
                         if (window.confirm('¿Eliminar producto?')) deleteMutation.mutate(product.id);
                       }}>
                         <Trash2 size={16} />
@@ -145,11 +145,11 @@ export function Catalog() {
               <h3>{editingProduct ? 'Configurar Tipo de Producto' : 'Nuevo Tipo de Producto'}</h3>
               <button className="btn-close" onClick={closeModal}>&times;</button>
             </div>
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} noValidate>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div className="form-group">
                   <label className="form-label">Nombre del Producto (Ej: Ploteo)</label>
-                  <input type="text" className="input-base" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
+                  <input type="text" className="input-base" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Precio Base ($) <span className="text-secondary" style={{fontWeight:400, fontSize:'0.8rem'}}>(Usar 0 si el precio es calculado por reglas)</span></label>
@@ -171,18 +171,20 @@ export function Catalog() {
                   <label className="form-label">Esquema de Atributos</label>
                   <textarea 
                     className="input-base" 
-                    style={{ height: '200px', fontFamily: 'monospace' }} 
+                    style={{ height: '300px', fontFamily: 'monospace', fontSize: '0.8rem', resize: 'vertical' }} 
                     value={attributesText}
                     onChange={(e) => setAttributesText(e.target.value)}
+                    spellCheck={false}
                   />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Reglas de Precios</label>
                   <textarea 
                     className="input-base" 
-                    style={{ height: '200px', fontFamily: 'monospace' }} 
+                    style={{ height: '300px', fontFamily: 'monospace', fontSize: '0.8rem', resize: 'vertical' }} 
                     value={priceRulesText}
                     onChange={(e) => setPriceRulesText(e.target.value)}
+                    spellCheck={false}
                   />
                 </div>
               </div>
