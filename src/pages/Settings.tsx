@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { pipelineService } from '../services/pipeline';
 import type { PipelineStage } from '../services/pipeline';
-import { Plus, Trash2, GripVertical, Save, X, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Save, X, ArrowUp, ArrowDown, Download, Shield } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 export function Settings() {
   const queryClient = useQueryClient();
@@ -12,6 +13,8 @@ export function Settings() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editColor, setEditColor] = useState('');
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [backupMsg, setBackupMsg] = useState('');
 
   const { data: stages, isLoading } = useQuery({
     queryKey: ['pipeline-stages'],
@@ -56,6 +59,52 @@ export function Settings() {
     [newStages[index], newStages[swapIdx]] = [newStages[swapIdx], newStages[index]];
     const reordered = newStages.map((s, i) => ({ id: s.id, position: i + 1 }));
     reorderMutation.mutate(reordered);
+  };
+
+  const handleBackup = async () => {
+    setBackupLoading(true);
+    setBackupMsg('');
+    try {
+      const [clients, orders, orderItems, products, suppliers, pipelineStages] = await Promise.all([
+        supabase.from('clients').select('*'),
+        supabase.from('orders').select('*'),
+        supabase.from('order_items').select('*'),
+        supabase.from('products_config').select('*'),
+        supabase.from('suppliers').select('*'),
+        supabase.from('pipeline_stages').select('*'),
+      ]);
+
+      const backup = {
+        version: '1.0',
+        generated_at: new Date().toISOString(),
+        tables: {
+          clients: clients.data || [],
+          orders: orders.data || [],
+          order_items: orderItems.data || [],
+          products_config: products.data || [],
+          suppliers: suppliers.data || [],
+          pipeline_stages: pipelineStages.data || [],
+        }
+      };
+
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const date = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `crmpunto_backup_${date}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      const totalRecords = Object.values(backup.tables).reduce((acc, t) => acc + t.length, 0);
+      setBackupMsg(`✅ Respaldo descargado: ${totalRecords} registros en total.`);
+    } catch (err: any) {
+      setBackupMsg('❌ Error al generar respaldo: ' + err.message);
+    } finally {
+      setBackupLoading(false);
+    }
   };
 
   if (isLoading) return <div style={{ padding: '2rem' }}>Cargando configuración...</div>;
@@ -132,13 +181,48 @@ export function Settings() {
       </div>
 
       {/* Currency info */}
-      <div className="glass-panel" style={{ padding: '1.5rem' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
         <h3 style={{ marginBottom: '1rem' }}>Moneda y Cotización</h3>
         <p className="text-secondary text-sm">
           Los pedidos se registran en la moneda seleccionada al momento de crearlos (<strong>$ UYU</strong> o <strong>U$S USD</strong>).
-          El sistema automáticamente calcula el equivalente en UYU usando la cotización del Banco República (BROU) para la contabilidad interna.
+          El sistema automáticamente consulta la cotización del Banco Central del Uruguay (BCU) para la contabilidad interna.
+        </p>
+      </div>
+
+      {/* Backup Section */}
+      <div className="glass-panel" style={{ padding: '1.5rem' }}>
+        <h3 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Shield size={20} style={{ color: 'var(--success-color)' }} />
+          Respaldo de Datos
+        </h3>
+        <p className="text-secondary text-sm" style={{ marginBottom: '1.5rem' }}>
+          Genera y descarga una copia completa de todos tus datos: clientes, pedidos, ítems, productos, proveedores y etapas del pipeline.
+          Se recomienda hacer un respaldo <strong>al menos una vez por semana</strong>.
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <button
+            className="btn btn-primary"
+            onClick={handleBackup}
+            disabled={backupLoading}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            <Download size={16} />
+            {backupLoading ? 'Generando respaldo...' : 'Descargar Respaldo Ahora'}
+          </button>
+          {backupMsg && (
+            <span style={{ 
+              fontSize: '0.875rem', 
+              color: backupMsg.startsWith('✅') ? 'var(--success-color)' : 'var(--danger-color)' 
+            }}>
+              {backupMsg}
+            </span>
+          )}
+        </div>
+        <p className="text-secondary" style={{ fontSize: '0.75rem', marginTop: '1rem' }}>
+          💡 Supabase también realiza respaldos automáticos diarios con retención de 7 días accesibles desde su panel de administración.
         </p>
       </div>
     </div>
   );
 }
+
