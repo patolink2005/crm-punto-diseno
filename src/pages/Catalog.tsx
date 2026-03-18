@@ -145,8 +145,8 @@ export function Catalog() {
                   <input type="text" className="input-base" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Precio Base ($)</label>
-                  <input type="number" className="input-base" value={formData.base_price} onChange={e => setFormData({...formData, base_price: Number(e.target.value)})} required />
+                  <label className="form-label">Precio Base ($) <span className="text-secondary" style={{fontWeight:400, fontSize:'0.8rem'}}>(Usar 0 si el precio es calculado por reglas)</span></label>
+                  <input type="number" min={0} className="input-base" value={formData.base_price} onChange={e => setFormData({...formData, base_price: Number(e.target.value)})} />
                 </div>
               </div>
               <div className="form-group">
