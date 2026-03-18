@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { orderService } from '../../services/orders';
 import { pipelineService } from '../../services/pipeline';
-import { X, Trash2, Save, Calendar, FileText, Truck, Archive, Edit, Package } from 'lucide-react';
+import { X, FileText, Archive, Package, Edit, Calendar } from 'lucide-react';
 import { OrderEditorModal } from './OrderEditorModal';
 
 export function OrderDetailModal({ orderId, onClose }: { orderId: string; onClose: () => void }) {

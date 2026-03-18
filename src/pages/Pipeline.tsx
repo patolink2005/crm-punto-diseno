@@ -4,7 +4,7 @@ import { orderService } from '../services/orders';
 import { pipelineService } from '../services/pipeline';
 import { DndContext, DragOverlay, useDraggable, useDroppable, closestCorners } from '@dnd-kit/core';
 import type { Order } from '../types';
-import { Plus, Eye, X, Calendar, FileText, Archive, Edit, Package } from 'lucide-react';
+import { Plus, Eye } from 'lucide-react';
 import { OrderEditorModal } from '../components/orders/OrderEditorModal';
 import { OrderDetailModal } from '../components/orders/OrderDetailModal';
 import './Pipeline.css';
