@@ -104,9 +104,9 @@ export function Users() {
             <div style={{ lineHeight: 1.6 }}>
               <p>Para agregar un nuevo miembro al equipo:</p>
               <ol style={{ paddingLeft: '1.25rem' }}>
-                <li>Comparte la URL de la aplicación.</li>
-                <li>La persona debe <strong>registrarse</strong> en el Login.</li>
-                <li>Aparecerá aquí automáticamente para que le asignes un rol.</li>
+                <li>Comparte la URL de la aplicación con el nuevo miembro.</li>
+                <li>La persona debe ir a la página de ingreso y hacer clic en <strong>"Regístrate aquí"</strong>.</li>
+                <li>Una vez registrado, aparecerá en esta lista automáticamente para que le asignes un rol (Admin o Emprendedora).</li>
               </ol>
               <div style={{ background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.3)', borderRadius: 'var(--radius-md)', padding: '1rem', marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
                 <Info size={18} style={{ flexShrink: 0, color: 'var(--primary-color)', marginTop: '2px' }} />

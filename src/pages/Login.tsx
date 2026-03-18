@@ -5,11 +5,12 @@ import { useAuthStore } from '../store/authStore';
 import { QRCodeSVG } from 'qrcode.react';
 import './Login.css';
 
-type LoginStep = 'CREDENTIALS' | 'SETUP_2FA' | 'CHALLENGE_2FA';
+type LoginStep = 'CREDENTIALS' | 'SIGN_UP' | 'SETUP_2FA' | 'CHALLENGE_2FA';
 
 export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [code, setCode] = useState('');
   const [factorId, setFactorId] = useState('');
   const [qrCode, setQrCode] = useState('');
@@ -25,7 +26,7 @@ export function Login() {
     if (isInitialized && session) {
       checkMfaStatus();
     }
-  }, [isInitialized, session]);
+  }, [isInitialized, session, profile]);
 
   const checkMfaStatus = async () => {
     const { data: aalData, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -40,7 +41,8 @@ export function Login() {
     }
 
     // If MFA is not enabled in profile, just let them in with AAL1
-    if (!profile?.mfa_enabled) {
+    // Optional: If profile doesn't exist yet (just registered), navigate home and let them wait for profile
+    if (!profile || !profile.mfa_enabled) {
       navigate('/');
       return;
     }
@@ -80,11 +82,7 @@ export function Login() {
     }
     
     setFactorId(data.id);
-    
-    // Sometimes totp.qr_code may contain raw SVG or just text depending on Supabase JS version. 
-    // totp.uri is the standard standard otpauth uri that is always safe to pass to a QR generator.
     setQrCode(data.totp.uri || data.totp.qr_code);
-    
     setSecret(data.totp.secret);
     setStep('SETUP_2FA');
     setLoading(false);
@@ -106,7 +104,32 @@ export function Login() {
       return;
     }
     
-    // Auth context will update, and useEffect will trigger checkMfaStatus
+    setLoading(false);
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    const { error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName
+        }
+      }
+    });
+
+    if (signUpError) {
+      setError(signUpError.message);
+      setLoading(false);
+      return;
+    }
+    
+    alert('¡Registro exitoso! Ya puedes iniciar sesión.');
+    setStep('CREDENTIALS');
     setLoading(false);
   };
 
@@ -143,37 +166,91 @@ export function Login() {
       <div className="login-box glass-panel">
         <div className="login-header">
           <h2>Punto Diseño</h2>
-          <p>Acceso al CRM</p>
+          <p>{step === 'SIGN_UP' ? 'Crea tu cuenta' : 'Acceso al CRM'}</p>
         </div>
 
         {error && <div className="alert-danger">{error}</div>}
 
         {step === 'CREDENTIALS' && (
-          <form onSubmit={handleLogin}>
-            <div className="form-group">
-              <label className="form-label">Email</label>
-              <input 
-                type="email" 
-                className="input-base" 
-                value={email} 
-                onChange={e => setEmail(e.target.value)} 
-                required 
-              />
+          <>
+            <form onSubmit={handleLogin}>
+              <div className="form-group">
+                <label className="form-label">Email</label>
+                <input 
+                  type="email" 
+                  className="input-base" 
+                  value={email} 
+                  onChange={e => setEmail(e.target.value)} 
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Contraseña</label>
+                <input 
+                  type="password" 
+                  className="input-base" 
+                  value={password} 
+                  onChange={e => setPassword(e.target.value)} 
+                  required 
+                />
+              </div>
+              <button type="submit" className="btn btn-primary w-full" disabled={loading}>
+                {loading ? 'Ingresando...' : 'Iniciar Sesión'}
+              </button>
+            </form>
+            <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+              <p className="text-sm text-secondary">
+                ¿No tienes cuenta? <button className="text-link" onClick={() => setStep('SIGN_UP')} style={{ background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', fontWeight: 600 }}>Regístrate aquí</button>
+              </p>
             </div>
-            <div className="form-group">
-              <label className="form-label">Contraseña</label>
-              <input 
-                type="password" 
-                className="input-base" 
-                value={password} 
-                onChange={e => setPassword(e.target.value)} 
-                required 
-              />
+          </>
+        )}
+
+        {step === 'SIGN_UP' && (
+          <>
+            <form onSubmit={handleSignUp}>
+              <div className="form-group">
+                <label className="form-label">Nombre Completo</label>
+                <input 
+                  type="text" 
+                  className="input-base" 
+                  value={fullName} 
+                  onChange={e => setFullName(e.target.value)} 
+                  required 
+                  placeholder="Ej: Juan Pérez"
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Email</label>
+                <input 
+                  type="email" 
+                  className="input-base" 
+                  value={email} 
+                  onChange={e => setEmail(e.target.value)} 
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Contraseña</label>
+                <input 
+                  type="password" 
+                  className="input-base" 
+                  value={password} 
+                  onChange={e => setPassword(e.target.value)} 
+                  required 
+                  minLength={6}
+                />
+              </div>
+              <button type="submit" className="btn btn-primary w-full" disabled={loading}>
+                {loading ? 'Registrando...' : 'Crear Cuenta'}
+              </button>
+            </form>
+            <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+              <p className="text-sm text-secondary">
+                ¿Ya tienes cuenta? <button className="text-link" onClick={() => setStep('CREDENTIALS')} style={{ background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', fontWeight: 600 }}>Inicia sesión</button>
+              </p>
             </div>
-            <button type="submit" className="btn btn-primary w-full" disabled={loading}>
-              {loading ? 'Ingresando...' : 'Iniciar Sesión'}
-            </button>
-          </form>
+          </>
         )}
 
         {step === 'SETUP_2FA' && (
