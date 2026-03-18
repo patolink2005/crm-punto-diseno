@@ -104,6 +104,10 @@ export function Pipeline() {
     mutationFn: ({ id, status }: { id: string, status: string }) => orderService.updateStatus(id, status as any),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+    },
+    onError: (err: any) => {
+      alert('Error al mover pedido: ' + (err.message || 'Error desconocido'));
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
     }
   });
 

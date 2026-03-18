@@ -35,7 +35,8 @@ export function Suppliers() {
 
   const deleteMutation = useMutation({
     mutationFn: supplierService.delete,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['suppliers'] }),
+    onError: (err: any) => alert('Error al eliminar proveedor: ' + err.message)
   });
 
   const openModal = (supplier?: Supplier) => {
