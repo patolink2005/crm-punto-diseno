@@ -30,6 +30,9 @@ export function Clients() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       closeModal();
+    },
+    onError: (err: any) => {
+      alert('Error al crear cliente: ' + (err.message || 'Error desconocido'));
     }
   });
 
@@ -38,12 +41,18 @@ export function Clients() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       closeModal();
+    },
+    onError: (err: any) => {
+      alert('Error al actualizar cliente: ' + (err.message || 'Error desconocido'));
     }
   });
 
   const deleteMutation = useMutation({
     mutationFn: clientService.delete,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['clients'] })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['clients'] }),
+    onError: (err: any) => {
+      alert('Error al eliminar cliente: ' + (err.message || 'Error desconocido'));
+    }
   });
 
   const openModal = (client?: Client) => {
