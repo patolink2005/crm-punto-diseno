@@ -47,7 +47,7 @@
 
 body {
   font-family: var(--font-family);
-  background: radial-gradient(circle at top right, #111827, #030712); /* Deep background gradient */
+  background: radial-gradient(circle at top right, var(--surface-color), var(--background-color));
   background-attachment: fixed;
   color: var(--text-primary);
   line-height: 1.6;

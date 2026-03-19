@@ -8,6 +8,9 @@ export interface BrandingSettings {
   primary_hover: string;
   border_radius: string;
   app_name: string;
+  background_color?: string;
+  surface_color?: string;
+  text_color?: string;
 }
 
 interface SystemSettings {
@@ -65,6 +68,13 @@ export function SystemSettingsProvider({ children }: { children: ReactNode }) {
       if (b.primary_color) root.style.setProperty('--primary-color', b.primary_color);
       if (b.primary_hover) root.style.setProperty('--primary-hover', b.primary_hover);
       if (b.border_radius) root.style.setProperty('--border-radius', b.border_radius);
+      if (b.background_color) root.style.setProperty('--background-color', b.background_color);
+      if (b.surface_color) {
+        root.style.setProperty('--surface-color', b.surface_color);
+        // Also update glass background base
+        root.style.setProperty('--glass-bg', `color-mix(in srgb, ${b.surface_color}, transparent 40%)`);
+      }
+      if (b.text_color) root.style.setProperty('--text-primary', b.text_color);
     }
   }, [settings]);
 

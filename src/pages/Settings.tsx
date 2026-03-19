@@ -24,7 +24,10 @@ export function Settings() {
     app_name: '',
     primary_color: '#6366f1',
     border_radius: '12px',
-    logo_url: ''
+    logo_url: '',
+    background_color: '#0c111d',
+    surface_color: '#1a202c',
+    text_color: '#f8fafc'
   });
 
   useEffect(() => {
@@ -33,7 +36,10 @@ export function Settings() {
         app_name: settings.branding.app_name,
         primary_color: settings.branding.primary_color,
         border_radius: settings.branding.border_radius,
-        logo_url: settings.branding.logo_url || ''
+        logo_url: settings.branding.logo_url || '',
+        background_color: settings.branding.background_color || '#0c111d',
+        surface_color: settings.branding.surface_color || '#1a202c',
+        text_color: settings.branding.text_color || '#f8fafc'
       });
     }
   }, [settings]);
@@ -157,7 +163,7 @@ export function Settings() {
           Define la identidad visual de la aplicación para tu empresa.
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Nombre de la Aplicación</label>
             <input 
@@ -168,7 +174,7 @@ export function Settings() {
             />
           </div>
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Logo URL (Imagen Cuadrada)</label>
+            <label className="form-label">Logo URL</label>
             <input 
               className="input-base" 
               value={brandForm.logo_url} 
@@ -183,13 +189,49 @@ export function Settings() {
                 type="color" 
                 value={brandForm.primary_color} 
                 onChange={e => setBrandForm({...brandForm, primary_color: e.target.value})}
-                style={{ width: '40px', height: '40px', border: 'none', cursor: 'pointer', borderRadius: '4px' }}
+                style={{ width: '30px', height: '30px', border: 'none', cursor: 'pointer', borderRadius: '4px' }}
               />
-              <span className="text-secondary" style={{ fontFamily: 'monospace' }}>{brandForm.primary_color}</span>
+              <span className="text-secondary" style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>{brandForm.primary_color}</span>
             </div>
           </div>
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Redondeado de Bordes ({brandForm.border_radius})</label>
+            <label className="form-label">Fondo (Body)</label>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              <input 
+                type="color" 
+                value={brandForm.background_color || '#0c111d'} 
+                onChange={e => setBrandForm({...brandForm, background_color: e.target.value})}
+                style={{ width: '30px', height: '30px', border: 'none', cursor: 'pointer', borderRadius: '4px' }}
+              />
+              <span className="text-secondary" style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>{brandForm.background_color || '#0c111d'}</span>
+            </div>
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Paneles (Surface)</label>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              <input 
+                type="color" 
+                value={brandForm.surface_color || '#1a202c'} 
+                onChange={e => setBrandForm({...brandForm, surface_color: e.target.value})}
+                style={{ width: '30px', height: '30px', border: 'none', cursor: 'pointer', borderRadius: '4px' }}
+              />
+              <span className="text-secondary" style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>{brandForm.surface_color || '#1a202c'}</span>
+            </div>
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Color de Texto</label>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              <input 
+                type="color" 
+                value={brandForm.text_color || '#f8fafc'} 
+                onChange={e => setBrandForm({...brandForm, text_color: e.target.value})}
+                style={{ width: '30px', height: '30px', border: 'none', cursor: 'pointer', borderRadius: '4px' }}
+              />
+              <span className="text-secondary" style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>{brandForm.text_color || '#f8fafc'}</span>
+            </div>
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Redondeado ({brandForm.border_radius})</label>
             <input 
               type="range" 
               min="0" 
