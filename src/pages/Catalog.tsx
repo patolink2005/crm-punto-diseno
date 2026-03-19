@@ -67,8 +67,13 @@ export function Catalog() {
       return;
     }
     try {
-      const parsedAttributes = JSON.parse(attributesText);
-      const parsedRules = JSON.parse(priceRulesText);
+      // Clean whitespace to avoid common copy-paste issues
+      const cleanAttributes = attributesText.trim();
+      const cleanRules = priceRulesText.trim();
+
+      const parsedAttributes = JSON.parse(cleanAttributes || '[]');
+      const parsedRules = JSON.parse(cleanRules || '[]');
+      
       const submitData = { 
         ...formData, 
         attributes_schema: parsedAttributes, 
@@ -81,7 +86,7 @@ export function Catalog() {
         createMutation.mutate(submitData);
       }
     } catch (error: any) {
-      setFormError('Error en formato JSON: ' + error.message);
+      setFormError('Error en formato JSON: ' + error.message + '. Revisa si faltan comas o llaves.');
     }
   };
 

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { orderService } from '../../services/orders';
 import { pipelineService } from '../../services/pipeline';
-import { X, FileText, Archive, Package, Edit, Calendar } from 'lucide-react';
+import { X, FileText, Archive, Package, Edit, Calendar, Trash2 } from 'lucide-react';
 import { OrderEditorModal } from './OrderEditorModal';
 
 export function OrderDetailModal({ orderId, onClose }: { orderId: string; onClose: () => void }) {
@@ -27,6 +27,15 @@ export function OrderDetailModal({ orderId, onClose }: { orderId: string; onClos
       onClose();
     },
     onError: (err: any) => alert('Error al archivar: ' + err.message)
+  });
+
+  const deleteOrderMutation = useMutation({
+    mutationFn: orderService.deleteOrder,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      onClose();
+    },
+    onError: (err: any) => alert('Error al eliminar pedido: ' + err.message)
   });
 
   if (isLoading) return (
@@ -164,6 +173,20 @@ export function OrderDetailModal({ orderId, onClose }: { orderId: string; onClos
                 <Archive size={16} /> Archivar
               </button>
             )}
+            
+            <button 
+              className="btn btn-outline" 
+              style={{ color: 'var(--danger-color)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
+              onClick={() => {
+                if (confirm('¿ELIMINAR PEDIDO PERMANENTEMENTE? Esta acción no se puede deshacer.')) {
+                  deleteOrderMutation.mutate(orderId);
+                }
+              }}
+              disabled={deleteOrderMutation.isPending}
+            >
+              <Trash2 size={16} /> Eliminar
+            </button>
+
             <button className="btn btn-outline" onClick={onClose}>Cerrar</button>
           </div>
         </div>
