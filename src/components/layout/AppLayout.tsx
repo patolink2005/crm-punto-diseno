@@ -36,15 +36,15 @@ export function AppLayout() {
   return (
     <div className="app-layout">
       {/* Mobile Header */}
-      <div className="mobile-header">
+      <div className="mobile-header" style={{ height: '60px', padding: '0 1rem' }}>
         <button className="hamburger-btn" onClick={() => setMobileMenuOpen(true)}>
           <Menu size={24} />
         </button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, justifyContent: 'center' }}>
           {logoUrl && <img src={logoUrl} alt="Logo" style={{ height: '24px', width: 'auto' }} />}
-          <span className="mobile-title">{appName}</span>
+          <span className="mobile-title" style={{ fontSize: '1rem' }}>{appName}</span>
         </div>
-        <span className="badge-role">{profile?.role || 'Emprendedora'}</span>
+        <div style={{ width: '24px' }} /> {/* Spacer for centering */}
       </div>
 
       {/* Mobile Overlay */}
@@ -101,13 +101,27 @@ export function AppLayout() {
           ))}
         </nav>
 
-        <div className="sidebar-footer">
-          <div className="user-info">
-            <span className="user-name">{profile?.full_name || 'Usuario'}</span>
+        <div className="sidebar-footer" style={{ marginTop: 'auto', padding: '1.5rem', borderTop: '1px solid var(--border-color)' }}>
+          <div className="user-info" style={{ marginBottom: '1.25rem' }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#fff' }}>{profile?.full_name || 'Usuario'}</div>
+            <div className="text-secondary" style={{ fontSize: '0.7rem' }}>Sesión activa</div>
           </div>
-          <button onClick={signOut} className="btn btn-outline btn-logout">
-            <LogOut size={18} /> Salir
+          <button onClick={signOut} className="btn btn-outline btn-logout" style={{ marginBottom: '1.5rem' }}>
+            <LogOut size={16} /> Salir
           </button>
+          
+          <div style={{ 
+            borderTop: '1px solid rgba(255,255,255,0.05)', 
+            paddingTop: '1rem', 
+            textAlign: 'center',
+            fontSize: '0.65rem',
+            color: 'var(--text-secondary)',
+            letterSpacing: '0.05em'
+          }}>
+            © {new Date().getFullYear()} PUNTO DISEÑO <br />
+            <span style={{ opacity: 0.6 }}>Desarrollado por</span> <br />
+            <strong style={{ color: 'var(--primary-color)' }}>PATOLINK</strong> ®
+          </div>
         </div>
       </aside>
 
