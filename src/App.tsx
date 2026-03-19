@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from './store/authStore';
+import { SystemSettingsProvider } from './context/SystemSettingsContext';
 import { AppLayout } from './components/layout/AppLayout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
@@ -40,30 +41,32 @@ export default function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          
-          <Route path="/" element={
-            <ProtectedRoute>
-              <AppLayout />
-            </ProtectedRoute>
-          }>
-            <Route index element={<Dashboard />} />
-            <Route path="clients" element={<Clients />} />
-            <Route path="clients/:id" element={<ClientDetail />} />
-            <Route path="catalog" element={<Catalog />} />
-            <Route path="pipeline" element={<Pipeline />} />
-            <Route path="invoices" element={<Invoices />} />
-            <Route path="users" element={<Users />} />
-            <Route path="suppliers" element={<Suppliers />} />
-            <Route path="history" element={<OrderHistory />} />
-            <Route path="reports" element={<Reports />} />
-            <Route path="settings" element={<Settings />} />
-            {/* Add more routes here like /others */}
-          </Route>
-        </Routes>
-      </Router>
+      <SystemSettingsProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            
+            <Route path="/" element={
+              <ProtectedRoute>
+                <AppLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<Dashboard />} />
+              <Route path="clients" element={<Clients />} />
+              <Route path="clients/:id" element={<ClientDetail />} />
+              <Route path="catalog" element={<Catalog />} />
+              <Route path="pipeline" element={<Pipeline />} />
+              <Route path="invoices" element={<Invoices />} />
+              <Route path="users" element={<Users />} />
+              <Route path="suppliers" element={<Suppliers />} />
+              <Route path="history" element={<OrderHistory />} />
+              <Route path="reports" element={<Reports />} />
+              <Route path="settings" element={<Settings />} />
+              {/* Add more routes here like /others */}
+            </Route>
+          </Routes>
+        </Router>
+      </SystemSettingsProvider>
     </QueryClientProvider>
   );
 }

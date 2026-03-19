@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { pipelineService } from '../services/pipeline';
 import type { PipelineStage } from '../services/pipeline';
-import { Plus, Trash2, GripVertical, Save, X, ArrowUp, ArrowDown, Download, Shield } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Save, X, ArrowUp, ArrowDown, Download, Shield, Palette } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useSystemSettings } from '../context/SystemSettingsContext';
 
 export function Settings() {
   const queryClient = useQueryClient();
+  const { settings, updateBranding, isUpdating } = useSystemSettings();
+  
   const [newName, setNewName] = useState('');
   const [newSlug, setNewSlug] = useState('');
   const [newColor, setNewColor] = useState('#6366f1');
@@ -15,6 +18,25 @@ export function Settings() {
   const [editColor, setEditColor] = useState('');
   const [backupLoading, setBackupLoading] = useState(false);
   const [backupMsg, setBackupMsg] = useState('');
+
+  // Branding local state
+  const [brandForm, setBrandForm] = useState({
+    app_name: '',
+    primary_color: '#6366f1',
+    border_radius: '12px',
+    logo_url: ''
+  });
+
+  useEffect(() => {
+    if (settings?.branding) {
+      setBrandForm({
+        app_name: settings.branding.app_name,
+        primary_color: settings.branding.primary_color,
+        border_radius: settings.branding.border_radius,
+        logo_url: settings.branding.logo_url || ''
+      });
+    }
+  }, [settings]);
 
   const { data: stages, isLoading } = useQuery({
     queryKey: ['pipeline-stages'],
@@ -107,12 +129,89 @@ export function Settings() {
     }
   };
 
+  const handleSaveBranding = () => {
+    // Generate hover color automatically (darker)
+    const primary = brandForm.primary_color;
+    // Simple way to get a darker shade: hex to something else or just trust the user will change it?
+    // Let's just pass the same or a slightly modified one.
+    updateBranding({
+      ...brandForm,
+      primary_hover: primary // For now same, context could handle complex shade math if needed
+    });
+  };
+
   if (isLoading) return <div style={{ padding: '2rem' }}>Cargando configuración...</div>;
 
   return (
-    <div style={{ padding: '0 1rem', maxWidth: '800px' }}>
+    <div style={{ padding: '0 1rem', maxWidth: '800px', paddingBottom: '4rem' }}>
       <h2 style={{ marginBottom: '0.5rem' }}>Configuración</h2>
       <p className="text-secondary" style={{ marginBottom: '2rem' }}>Personaliza las etapas del pipeline y otros ajustes del sistema.</p>
+
+      {/* Branding Section */}
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+        <h3 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Palette size={20} style={{ color: 'var(--primary-color)' }} />
+          Personalización (Imagen de Marca)
+        </h3>
+        <p className="text-secondary text-sm" style={{ marginBottom: '1.5rem' }}>
+          Define la identidad visual de la aplicación para tu empresa.
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Nombre de la Aplicación</label>
+            <input 
+              className="input-base" 
+              value={brandForm.app_name} 
+              onChange={e => setBrandForm({...brandForm, app_name: e.target.value})}
+              placeholder="Ej: Punto Diseño"
+            />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Logo URL (Imagen Cuadrada)</label>
+            <input 
+              className="input-base" 
+              value={brandForm.logo_url} 
+              onChange={e => setBrandForm({...brandForm, logo_url: e.target.value})}
+              placeholder="https://ejemplo.com/logo.png"
+            />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Color Principal</label>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              <input 
+                type="color" 
+                value={brandForm.primary_color} 
+                onChange={e => setBrandForm({...brandForm, primary_color: e.target.value})}
+                style={{ width: '40px', height: '40px', border: 'none', cursor: 'pointer', borderRadius: '4px' }}
+              />
+              <span className="text-secondary" style={{ fontFamily: 'monospace' }}>{brandForm.primary_color}</span>
+            </div>
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Redondeado de Bordes ({brandForm.border_radius})</label>
+            <input 
+              type="range" 
+              min="0" 
+              max="24" 
+              step="2"
+              value={parseInt(brandForm.border_radius)} 
+              onChange={e => setBrandForm({...brandForm, border_radius: `${e.target.value}px`})}
+              style={{ width: '100%', cursor: 'pointer' }}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button 
+            className="btn btn-primary" 
+            onClick={handleSaveBranding}
+            disabled={isUpdating}
+          >
+            {isUpdating ? 'Guardando...' : 'Guardar Cambios Visuales'}
+          </button>
+        </div>
+      </div>
 
       {/* Pipeline Stages */}
       <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
@@ -225,4 +324,5 @@ export function Settings() {
     </div>
   );
 }
+
 

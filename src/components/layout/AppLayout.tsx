@@ -1,13 +1,19 @@
 import { useState } from 'react';
 import { Outlet, useLocation, Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
+import { useSystemSettings } from '../../context/SystemSettingsContext';
 import { LogOut, LayoutDashboard, Users, UserPlus, Package, ShoppingCart, FileText, Truck, Menu, X, Settings, History as HistoryIcon, BarChart } from 'lucide-react';
 import './AppLayout.css';
 
 export function AppLayout() {
   const { profile, signOut } = useAuthStore();
+  const { settings } = useSystemSettings();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+
+  const branding = settings?.branding;
+  const logoUrl = branding?.logo_url;
+  const appName = branding?.app_name || 'CRMPunto';
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
@@ -34,7 +40,10 @@ export function AppLayout() {
         <button className="hamburger-btn" onClick={() => setMobileMenuOpen(true)}>
           <Menu size={24} />
         </button>
-        <span className="mobile-title">Punto Diseño</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {logoUrl && <img src={logoUrl} alt="Logo" style={{ height: '24px', width: 'auto' }} />}
+          <span className="mobile-title">{appName}</span>
+        </div>
         <span className="badge-role">{profile?.role || 'Emprendedora'}</span>
       </div>
 
@@ -45,7 +54,14 @@ export function AppLayout() {
       <aside className={`sidebar glass-panel ${mobileMenuOpen ? 'sidebar-open' : ''}`}>
         <div className="sidebar-header">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Punto Diseño</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" style={{ height: '32px', width: 'auto', borderRadius: '4px' }} />
+              ) : (
+                <div style={{ width: '32px', height: '32px', background: 'var(--primary-color)', borderRadius: '8px' }} />
+              )}
+              <h2 style={{ fontSize: '1.25rem', margin: 0 }}>{appName}</h2>
+            </div>
             <button className="sidebar-close-btn" onClick={() => setMobileMenuOpen(false)}>
               <X size={20} />
             </button>
