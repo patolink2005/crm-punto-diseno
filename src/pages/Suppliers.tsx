@@ -87,20 +87,36 @@ export function Suppliers() {
           <p className="text-secondary">No se encontraron proveedores.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
           {filteredSuppliers.map(s => (
-            <div key={s.id} className="glass-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div key={s.id} className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.875rem', position: 'relative' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{s.name}</h3>
+                <h3 style={{ margin: 0, fontSize: '1.15rem' }}>{s.name}</h3>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button className="btn btn-outline" style={{ padding: '0.4rem' }} onClick={() => openModal(s)}><Edit2 size={14} /></button>
-                  <button className="btn btn-outline" style={{ padding: '0.4rem', color: 'var(--color-danger)' }} onClick={() => { if (confirm('¿Seguro que deseas eliminar este proveedor?')) deleteMutation.mutate(s.id); }}><Trash2 size={14} /></button>
+                  <button 
+                    className="btn btn-outline" 
+                    style={{ padding: '0.5rem', borderRadius: '10px' }} 
+                    onClick={() => openModal(s)}
+                    title="Editar"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  <button 
+                    className="btn btn-outline" 
+                    style={{ padding: '0.5rem', borderRadius: '10px', color: 'var(--danger-color)', borderColor: 'rgba(239, 68, 68, 0.2)' }} 
+                    onClick={() => { if (confirm('¿Seguro que deseas eliminar este proveedor?')) deleteMutation.mutate(s.id); }}
+                    title="Eliminar"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
               </div>
-              {s.contact_name && <div className="text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}><User size={14} /> {s.contact_name}</div>}
-              {s.phone && <div className="text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}><Phone size={14} /> {s.phone}</div>}
-              {s.email && <div className="text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', wordBreak: 'break-all' }}><Mail size={14} /> {s.email}</div>}
-              {s.notes && <div className="text-secondary" style={{ fontSize: '0.85rem', fontStyle: 'italic', borderTop: '1px solid var(--color-border)', paddingTop: '0.5rem' }}>{s.notes}</div>}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
+                {s.contact_name && <div className="text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', fontSize: '0.9rem' }}><User size={14} style={{ color: 'var(--primary-color)' }} /> {s.contact_name}</div>}
+                {s.phone && <div className="text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', fontSize: '0.9rem' }}><Phone size={14} style={{ color: 'var(--primary-color)' }} /> {s.phone}</div>}
+                {s.email && <div className="text-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', fontSize: '0.9rem' }}><Mail size={14} style={{ color: 'var(--primary-color)' }} /> {s.email}</div>}
+              </div>
+              {s.notes && <div className="text-secondary" style={{ fontSize: '0.85rem', fontStyle: 'italic', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem', marginTop: '0.5rem' }}>{s.notes}</div>}
             </div>
           ))}
         </div>

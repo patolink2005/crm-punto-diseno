@@ -52,21 +52,40 @@ export function AppLayout() {
 
       {/* Sidebar */}
       <aside className={`sidebar glass-panel ${mobileMenuOpen ? 'sidebar-open' : ''}`}>
-        <div className="sidebar-header">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              {logoUrl ? (
-                <img src={logoUrl} alt="Logo" style={{ height: '32px', width: 'auto', borderRadius: '4px' }} />
-              ) : (
-                <div style={{ width: '32px', height: '32px', background: 'var(--primary-color)', borderRadius: '8px' }} />
-              )}
-              <h2 style={{ fontSize: '1.25rem', margin: 0 }}>{appName}</h2>
-            </div>
+        <div className="sidebar-header" style={{ padding: '2rem 1.5rem', borderBottom: '1px solid var(--border-color)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
+            {logoUrl ? (
+              <div style={{ width: '42px', height: '42px', borderRadius: '10px', overflow: 'hidden', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid rgba(255,255,255,0.1)' }}>
+                <img src={logoUrl} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              </div>
+            ) : (
+              <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'linear-gradient(135deg, var(--primary-color), var(--primary-hover))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.25rem', color: '#fff', flexShrink: 0, boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)' }}>
+                {appName.charAt(0)}
+              </div>
+            )}
+            <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0, letterSpacing: '-0.02em', color: '#fff', lineHeight: 1.1, flex: 1 }}>
+              {appName}
+            </h2>
             <button className="sidebar-close-btn" onClick={() => setMobileMenuOpen(false)}>
               <X size={20} />
             </button>
           </div>
-          <span className="user-role badge-role">{profile?.role === 'admin' ? 'Administradora' : 'Emprendedora'}</span>
+          {profile && (
+            <span className="badge-role" style={{ 
+              background: 'color-mix(in srgb, var(--primary-color), transparent 85%)',
+              color: 'var(--primary-color)',
+              padding: '0.35rem 0.75rem',
+              fontSize: '0.65rem',
+              fontWeight: 800,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              borderRadius: '8px',
+              border: '1px solid color-mix(in srgb, var(--primary-color), transparent 70%)',
+              display: 'inline-block'
+            }}>
+              {profile.role === 'admin' ? 'Administradora' : 'Emprendedora'}
+            </span>
+          )}
         </div>
         
         <nav className="sidebar-nav">
