@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { orderService } from '../../services/orders';
 import { pipelineService } from '../../services/pipeline';
-import { X, FileText, Archive, Package, Edit, Calendar, Trash2 } from 'lucide-react';
+import { X, FileText, Archive, Package, Edit, Calendar, Trash2, MessageSquare, DollarSign } from 'lucide-react';
 import { OrderEditorModal } from './OrderEditorModal';
 
 export function OrderDetailModal({ orderId, onClose }: { orderId: string; onClose: () => void }) {
@@ -80,7 +80,20 @@ export function OrderDetailModal({ orderId, onClose }: { orderId: string; onClos
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
             <div className="glass-panel" style={{ padding: '1rem', background: 'rgba(0,0,0,0.15)' }}>
               <div className="text-secondary text-sm" style={{ marginBottom: '0.25rem' }}>Cliente</div>
-              <div style={{ fontWeight: 600 }}>{order.clients?.name || 'Desconocido'}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ fontWeight: 600 }}>{order.clients?.name || 'Desconocido'}</div>
+                {(order as any).clients?.phone && (
+                  <a 
+                    href={`https://wa.me/${(order as any).clients.phone.replace(/\D/g, '')}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="btn btn-outline"
+                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem', color: '#25D366', borderColor: 'rgba(37, 211, 102, 0.2)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                  >
+                    <MessageSquare size={12} /> WhatsApp
+                  </a>
+                )}
+              </div>
             </div>
             
             <div className="glass-panel" style={{ padding: '1rem', background: 'rgba(0,0,0,0.15)' }}>
@@ -101,6 +114,30 @@ export function OrderDetailModal({ orderId, onClose }: { orderId: string; onClos
                 <span><Calendar size={12} /> Creación</span>
               </div>
               <div style={{ fontWeight: 600 }}>{new Date(order.created_at).toLocaleDateString('es-UY')}</div>
+            </div>
+          </div>
+
+          {/* Payment Summary (Plan B) */}
+          <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1.5rem', background: 'linear-gradient(135deg, rgba(0,0,0,0.2), rgba(0,0,0,0.1))', border: '1px solid var(--color-border)' }}>
+            <h4 style={{ marginTop: 0, marginBottom: '1rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <DollarSign size={16} style={{ color: 'var(--success-color)' }} /> 
+              Resumen de Pago
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+              <div>
+                <div className="text-secondary text-xs">Total del Pedido</div>
+                <div style={{ fontWeight: 600 }}>{sym}{order.total?.toLocaleString('es-UY')}</div>
+              </div>
+              <div>
+                <div className="text-secondary text-xs">Seña Recibida ({order.payment_method || 'N/A'})</div>
+                <div style={{ fontWeight: 600, color: 'var(--success-color)' }}>{sym}{(order as any).deposit_amount?.toLocaleString('es-UY') || '0'}</div>
+              </div>
+              <div>
+                <div className="text-secondary text-xs">Saldo Pendiente</div>
+                <div style={{ fontWeight: 700, color: (order as any).balance_due > 0 ? 'var(--danger-color)' : 'var(--success-color)' }}>
+                  {sym}{(order as any).balance_due?.toLocaleString('es-UY') || '0'}
+                </div>
+              </div>
             </div>
           </div>
 

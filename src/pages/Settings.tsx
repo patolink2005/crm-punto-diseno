@@ -27,7 +27,8 @@ export function Settings() {
     logo_url: '',
     background_color: '#0c111d',
     surface_color: '#1a202c',
-    text_color: '#f8fafc'
+    text_color: '#f8fafc',
+    enforce_deposit_on_move: false
   });
 
   useEffect(() => {
@@ -39,7 +40,8 @@ export function Settings() {
         logo_url: settings.branding.logo_url || '',
         background_color: settings.branding.background_color || '#0c111d',
         surface_color: settings.branding.surface_color || '#1a202c',
-        text_color: settings.branding.text_color || '#f8fafc'
+        text_color: settings.branding.text_color || '#f8fafc',
+        enforce_deposit_on_move: settings.branding.enforce_deposit_on_move || false
       });
     }
   }, [settings]);
@@ -242,6 +244,28 @@ export function Settings() {
               style={{ width: '100%', cursor: 'pointer' }}
             />
           </div>
+        </div>
+
+        {/* Security & Workflow Section within Visibility */}
+        <div style={{ padding: '1.25rem', background: 'rgba(0,0,0,0.1)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', marginBottom: '1.5rem' }}>
+          <h4 style={{ marginTop: 0, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
+            <Shield size={16} style={{ color: 'var(--success-color)' }} />
+            Seguridad y Flujo de Trabajo
+          </h4>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer' }}>
+            <div className="form-group" style={{ marginBottom: 0, flex: 1 }}>
+              <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Exigir seña para mover pedidos</span>
+              <p className="text-secondary" style={{ margin: 0, fontSize: '0.75rem' }}>
+                Si está activo, no se permitirán mover pedidos desde "Presupuesto" a otros estados sin registrar una seña previa.
+              </p>
+            </div>
+            <input 
+              type="checkbox" 
+              checked={brandForm.enforce_deposit_on_move} 
+              onChange={e => setBrandForm({...brandForm, enforce_deposit_on_move: e.target.checked})}
+              style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+            />
+          </label>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

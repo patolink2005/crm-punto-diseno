@@ -7,6 +7,7 @@ import type { Order } from '../types';
 import { Plus, Eye } from 'lucide-react';
 import { OrderEditorModal } from '../components/orders/OrderEditorModal';
 import { OrderDetailModal } from '../components/orders/OrderDetailModal';
+import { useSystemSettings } from '../context/SystemSettingsContext';
 import './Pipeline.css';
 
 function formatOrderNumber(order: Order): string {
@@ -80,6 +81,7 @@ function DroppableColumn({ id, title, color, orders, onClickDetail }: { id: stri
 
 export function Pipeline() {
   const queryClient = useQueryClient();
+  const { settings } = useSystemSettings();
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
@@ -127,6 +129,16 @@ export function Pipeline() {
     const order = orders?.find(o => o.id === orderId);
 
     if (order && (order as any).status !== newStatus) {
+      // Plan C: Security check
+      const isInitialStage = ['nuevo_pedido', 'presupuestado'].includes((order as any).status);
+      const isMovingForward = !['nuevo_pedido', 'presupuestado'].includes(newStatus);
+      const noDeposit = !(order as any).deposit_amount || (order as any).deposit_amount <= 0;
+
+      if (settings?.branding?.enforce_deposit_on_move && isInitialStage && isMovingForward && noDeposit) {
+        alert('❌ SEGURIDAD: No se puede mover el pedido a producción/diseño sin registrar una seña previa.');
+        return;
+      }
+
       queryClient.setQueryData(['orders'], (oldData: Order[] | undefined) => {
         if (!oldData) return [];
         return oldData.map(o => o.id === orderId ? { ...o, status: newStatus } : o);

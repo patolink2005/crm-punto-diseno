@@ -23,6 +23,8 @@ export function OrderEditorModal({ orderId, onClose }: OrderEditorModalProps) {
   const [currency, setCurrency] = useState<'UYU' | 'USD'>('UYU');
   const [exchangeRateManual, setExchangeRateManual] = useState<number | null>(null);
   const [items, setItems] = useState<any[]>([]);
+  const [depositAmount, setDepositAmount] = useState(0);
+  const [paymentMethod, setPaymentMethod] = useState('');
   
   // New Item State
   const [selectedProductId, setSelectedProductId] = useState('');
@@ -83,6 +85,8 @@ export function OrderEditorModal({ orderId, onClose }: OrderEditorModalProps) {
         total: it.calculated_price * it.quantity
       })) || [];
       setItems(mappedItems);
+      setDepositAmount(existingOrder.deposit_amount || 0);
+      setPaymentMethod(existingOrder.payment_method || '');
     }
   }, [existingOrder, isEdit]);
 
@@ -201,6 +205,7 @@ export function OrderEditorModal({ orderId, onClose }: OrderEditorModalProps) {
   };
 
   const totalAmount = items.reduce((acc, curr) => acc + ((curr.calculated_price * curr.quantity) || 0), 0);
+  const balanceDue = totalAmount - depositAmount;
 
   const saveMutation = useMutation({
     mutationFn: (data: any) => isEdit 
@@ -228,7 +233,10 @@ export function OrderEditorModal({ orderId, onClose }: OrderEditorModalProps) {
         currency,
         total: totalAmount,
         total_uyu: totalUyu,
-        exchange_rate: currency === 'USD' ? effectiveExchangeRate : 1
+        exchange_rate: currency === 'USD' ? effectiveExchangeRate : 1,
+        deposit_amount: depositAmount,
+        payment_method: paymentMethod,
+        balance_due: balanceDue
       },
       items: items.map(it => ({
         product_config_id: it.product_config_id,
@@ -407,7 +415,45 @@ export function OrderEditorModal({ orderId, onClose }: OrderEditorModalProps) {
               </div>
               <div className="form-group">
                 <label className="form-label">Notas / Instrucciones</label>
-                <textarea className="input-base" rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Ej: Entregar envuelto para regalo..." />
+                <textarea className="input-base" rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Ej: Entregar envuelto para regalo..." />
+              </div>
+            </div>
+
+            {/* Sec: Payments (Plan B) */}
+            <div className="glass-panel" style={{ marginTop: '1.5rem', padding: '1.25rem', background: 'rgba(0,0,0,0.15)', border: '1px solid var(--color-border)' }}>
+              <h4 style={{ marginTop: 0, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <DollarSign size={16} style={{ color: 'var(--success-color)' }} /> 
+                Gestión de Pago (Seña)
+              </h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem' }}>
+                <div className="form-group">
+                  <label className="form-label text-xs">Monto de Seña ({currency})</label>
+                  <input 
+                    type="number" 
+                    min={0} 
+                    max={totalAmount}
+                    className="input-base" 
+                    value={depositAmount} 
+                    onChange={e => setDepositAmount(Number(e.target.value))} 
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label text-xs">Método de Pago</label>
+                  <select className="input-base" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
+                    <option value="">Seleccione...</option>
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Transferencia">Transferencia</option>
+                    <option value="Mercado Pago">Mercado Pago</option>
+                    <option value="Débito/Crédito">Débito/Crédito</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label text-xs">Saldo Pendiente</label>
+                  <div style={{ padding: '0.5rem 0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--radius-sm)', fontWeight: 700, color: balanceDue > 0 ? 'var(--danger-color)' : 'var(--success-color)' }}>
+                    {currency === 'USD' ? 'U$S' : '$'} {balanceDue.toLocaleString('es-UY', {minimumFractionDigits: 2})}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

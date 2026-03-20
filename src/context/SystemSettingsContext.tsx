@@ -11,6 +11,7 @@ export interface BrandingSettings {
   background_color?: string;
   surface_color?: string;
   text_color?: string;
+  enforce_deposit_on_move?: boolean;
 }
 
 interface SystemSettings {
@@ -75,6 +76,9 @@ export function SystemSettingsProvider({ children }: { children: ReactNode }) {
         root.style.setProperty('--glass-bg', `color-mix(in srgb, ${b.surface_color}, transparent 40%)`);
       }
       if (b.text_color) root.style.setProperty('--text-primary', b.text_color);
+      
+      // We don't need a property for enforce_deposit_on_move as it is logic-only, 
+      // but it will be available in the 'settings' object.
     }
   }, [settings]);
 
