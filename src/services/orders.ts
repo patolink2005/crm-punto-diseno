@@ -5,7 +5,7 @@ export const orderService = {
   getAll: async () => {
     const { data, error } = await supabase
       .from('orders')
-      .select('*, clients(name)')
+      .select('*, clients(name, phone)')
       .is('archived_at', null)
       .order('created_at', { ascending: false });
     
@@ -16,7 +16,7 @@ export const orderService = {
   getArchived: async () => {
     const { data, error } = await supabase
       .from('orders')
-      .select('*, clients(name)')
+      .select('*, clients(name, phone)')
       .not('archived_at', 'is', null)
       .order('archived_at', { ascending: false });
     
@@ -44,7 +44,7 @@ export const orderService = {
   async getById(id: string) {
     const { data: order, error } = await supabase
       .from('orders')
-      .select('*, clients(name)')
+      .select('*, clients(name, phone)')
       .eq('id', id)
       .single();
     if (error) throw error;
