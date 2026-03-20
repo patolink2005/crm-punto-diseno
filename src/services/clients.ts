@@ -6,7 +6,7 @@ export const clientService = {
     const { data, error } = await supabase
       .from('clients')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('name');
     
     if (error) throw error;
     return data as Client[];
