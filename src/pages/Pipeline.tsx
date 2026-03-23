@@ -4,11 +4,12 @@ import { orderService } from '../services/orders';
 import { clientService } from '../services/clients';
 import { pipelineService } from '../services/pipeline';
 import { DndContext, DragOverlay, useDraggable, useDroppable, closestCorners } from '@dnd-kit/core';
-import type { Order, BrandingSettings } from './types';
+import type { Order, BrandingSettings } from '../types';
 import { Plus, Eye } from 'lucide-react';
-import { OrderEditorModal } from '../components/orders/OrderEditorModal';
+import { OrderEditorModal, OrderSubmitResponse } from '../components/orders/OrderEditorModal';
 import { OrderDetailModal } from '../components/orders/OrderDetailModal';
 import { useSystemSettings } from '../context/SystemSettingsContext';
+import { supabase } from '../lib/supabase';
 import './Pipeline.css';
 
 function formatOrderNumber(order: Order): string {
@@ -38,13 +39,17 @@ function sendWhatsAppMessage(phone: string, message: string) {
   window.open(whatsappUrl, '_blank');
 }
 
-async function generateAndSendWhatsApp(orderId: string, type: 'new_order' | 'pickup', settings: { branding: BrandingSettings } | null) {
+async function generateAndSendWhatsApp(orderId: string, type: 'new_order' | 'pickup', settings: { branding: BrandingSettings } | null | undefined) {
   const order = await orderService.getById(orderId);
   if (!order) {
     alert('No se encontró el pedido.');
     return;
   }
-  const client = await clientService.getById(order.client_id);
+  const { data: client, error } = await supabase.from('clients').select('*').eq('id', order.client_id).single();
+  if (error || !client) {
+    alert('No se encontró el cliente asociado al pedido.');
+    return;
+  }
   if (!client) {
     alert('No se encontró el cliente asociado al pedido.');
     return;
@@ -52,7 +57,7 @@ async function generateAndSendWhatsApp(orderId: string, type: 'new_order' | 'pic
 
   let message = '';
   if (type === 'new_order') {
-    const template = settings?.branding.whatsapp_new_order_template || `Hola {clientName}, hemos creado tu pedido *{orderNumber}* con el siguiente detalle:\n\n{items}\n\n*Precio Total:* {total}\n*Seña:* {deposit}\n*Saldo:* {balance}\n\n¡Gracias!`;
+    const template = (settings?.branding as any)?.whatsapp_new_order_template || `Hola {clientName}, hemos creado tu pedido *{orderNumber}* con el siguiente detalle:\n\n{items}\n\n*Precio Total:* {total}\n*Seña:* {deposit}\n*Saldo:* {balance}\n\n¡Gracias!`;
     const itemsText = order.items
       .filter((item: any) => !item.supplier_id)
       .map((item: any) => `- ${item.description} (${formatCurrency(item.price, order.currency)})`)
@@ -67,7 +72,7 @@ async function generateAndSendWhatsApp(orderId: string, type: 'new_order' | 'pic
       .replace('{balance}', formatCurrency(order.total - order.deposit_amount, order.currency));
 
   } else if (type === 'pickup') {
-    const template = settings?.branding.whatsapp_pickup_template || '¡Hola {clientName}! Tu pedido *{orderNumber}* está listo para retirar.';
+    const template = (settings?.branding as any)?.whatsapp_pickup_template || '¡Hola {clientName}! Tu pedido *{orderNumber}* está listo para retirar.';
     message = template.replace('{clientName}', client.name).replace('{orderNumber}', formatOrderNumber(order));
   }
 
@@ -153,7 +158,7 @@ export function Pipeline() {
     ((o as any).clients?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleOrderCreation = async (response: { order: { id: string, client_id: string } }) => {
+  const handleOrderCreation = async (response: OrderSubmitResponse) => {
     setIsOrderModalOpen(false);
     if (confirm("Pedido creado con éxito. ¿Deseas enviar el resumen por WhatsApp ahora?")) {
       await generateAndSendWhatsApp(response.order.id, 'new_order', settings);
@@ -251,7 +256,7 @@ export function Pipeline() {
         </DragOverlay>
       </DndContext>
 
-      {isOrderModalOpen && <OrderEditorModal onClose={() => setIsOrderModalOpen(false)} onOrderCreated={handleOrderCreation as any} />}
+      {isOrderModalOpen && <OrderEditorModal onClose={() => setIsOrderModalOpen(false)} onOrderCreated={handleOrderCreation} />}
       {detailOrderId && <OrderDetailModal orderId={detailOrderId} onClose={() => setDetailOrderId(null)} />}
     </div>
   );

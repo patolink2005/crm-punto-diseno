@@ -44,8 +44,8 @@ export function Settings() {
         surface_color: settings.branding.surface_color || '#1a202c',
         text_color: settings.branding.text_color || '#f8fafc',
         enforce_deposit_on_move: settings.branding.enforce_deposit_on_move || false,
-        whatsapp_new_order_template: settings.branding.whatsapp_new_order_template ?? '',
-        whatsapp_pickup_template: settings.branding.whatsapp_pickup_template ?? ''
+        whatsapp_new_order_template: (settings.branding as any).whatsapp_new_order_template ?? '',
+        whatsapp_pickup_template: (settings.branding as any).whatsapp_pickup_template ?? ''
       });
     }
   }, [settings]);
