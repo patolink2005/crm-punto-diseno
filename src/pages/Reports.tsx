@@ -24,7 +24,7 @@ export function Reports() {
   });
 
   const deleteOrderMutation = useMutation({
-    mutationFn: orderService.delete,
+    mutationFn: (id: string) => orderService.deleteOrder(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reports-orders'] });
     },
