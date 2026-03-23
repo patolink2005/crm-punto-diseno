@@ -4,9 +4,9 @@ import { orderService } from '../services/orders';
 import { clientService } from '../services/clients';
 import { pipelineService } from '../services/pipeline';
 import { DndContext, DragOverlay, useDraggable, useDroppable, closestCorners } from '@dnd-kit/core';
-import type { Order, OrderWithItems } from '../types';
+import type { Order } from '../types';
 import { Plus, Eye } from 'lucide-react';
-import { OrderEditorModal, OrderSubmitResponse } from '../components/orders/OrderEditorModal';
+import { OrderEditorModal } from '../components/orders/OrderEditorModal';
 import { OrderDetailModal } from '../components/orders/OrderDetailModal';
 import { useSystemSettings } from '../context/SystemSettingsContext';
 import './Pipeline.css';
@@ -153,15 +153,7 @@ export function Pipeline() {
     ((o as any).clients?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const processTemplate = (template: string, data: Record<string, string | number>) => {
-    let message = template;
-    for (const key in data) {
-      message = message.replace(new RegExp(`{${key}}`, 'g'), String(data[key]));
-    }
-    return message;
-  };
-
-  const handleOrderCreation = async (response: OrderSubmitResponse) => {
+  const handleOrderCreation = async (response: { order: { id: string } }) => {
     setIsOrderModalOpen(false);
     if (confirm("Pedido creado con éxito. ¿Deseas enviar el resumen por WhatsApp ahora?")) {
       await generateAndSendWhatsApp(response.order.id, 'new_order', settings);
