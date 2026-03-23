@@ -46,6 +46,14 @@ export interface Supplier {
 }
 
 export interface BrandingSettings {
+    app_name: string;
+    primary_color: string;
+    border_radius: string;
+    logo_url: string;
+    background_color: string;
+    surface_color: string;
+    text_color: string;
+    enforce_deposit_on_move: boolean;
     whatsapp_new_order_template: string;
     whatsapp_pickup_template: string;
 }
