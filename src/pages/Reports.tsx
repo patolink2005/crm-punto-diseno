@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { orderService } from '../services/orders';
-import { Download } from 'lucide-react';
+import { Download, Trash2 } from 'lucide-react';
 import './Clients.css';
 
 export function Reports() {
-  const [dateRange, setDateRange] = useState({ 
+  const queryClient = useQueryClient();
+
+  const [dateRange, setDateRange] = useState({
     start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0]
   });
@@ -13,12 +15,22 @@ export function Reports() {
   const { data: allOrders, isLoading } = useQuery({
     queryKey: ['reports-orders'],
     queryFn: async () => {
-      // For reports, we want potentially both archived and active? 
+      // For reports, we want potentially both archived and active?
       // Actually, usually reports are for "Facturado" (Invoiced) orders.
       const archived = await orderService.getArchived();
       const active = await orderService.getAll();
       return [...active, ...archived].filter(o => o.status === 'facturado');
     }
+  });
+
+  const deleteOrderMutation = useMutation({
+    mutationFn: orderService.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reports-orders'] });
+    },
+    onError: (err: any) => {
+      alert('Error al eliminar el pedido: ' + err.message);
+    },
   });
 
   const reportData = allOrders?.filter(o => {
@@ -80,11 +92,11 @@ export function Reports() {
       <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div className="form-group" style={{ margin: 0 }}>
           <label className="form-label">Desde</label>
-          <input type="date" className="input-base" value={dateRange.start} onChange={e => setDateRange({...dateRange, start: e.target.value})} />
+          <input type="date" className="input-base" value={dateRange.start} onChange={e => setDateRange({ ...dateRange, start: e.target.value })} />
         </div>
         <div className="form-group" style={{ margin: 0 }}>
           <label className="form-label">Hasta</label>
-          <input type="date" className="input-base" value={dateRange.end} onChange={e => setDateRange({...dateRange, end: e.target.value})} />
+          <input type="date" className="input-base" value={dateRange.end} onChange={e => setDateRange({ ...dateRange, end: e.target.value })} />
         </div>
         <div style={{ flex: 1 }} />
         <div style={{ display: 'flex', gap: '1rem' }}>
@@ -112,6 +124,7 @@ export function Reports() {
                 <th style={{ textAlign: 'right' }}>Monto Orig.</th>
                 <th style={{ textAlign: 'right' }}>T.C.</th>
                 <th style={{ textAlign: 'right' }}>Eq. UYU</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -132,6 +145,15 @@ export function Reports() {
                     </td>
                     <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--success-color)' }}>
                       ${uyuVal.toLocaleString('es-UY')}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button
+                        className="btn btn-outline"
+                        style={{ padding: '0.35rem', color: 'var(--danger-color)' }}
+                        onClick={() => { if (confirm(`¿Estás seguro de que quieres eliminar el pedido ${orderNum}? Esta acción no se puede deshacer.`)) deleteOrderMutation.mutate(o.id); }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </td>
                   </tr>
                 );
