@@ -16,10 +16,9 @@ export function Reports() {
     queryKey: ['reports-orders'],
     queryFn: async () => {
       // For reports, we want potentially both archived and active?
-      // Actually, usually reports are for "Facturado" (Invoiced) orders.
       const archived = await orderService.getArchived();
       const active = await orderService.getAll();
-      return [...active, ...archived].filter(o => o.status === 'facturado');
+      return [...active, ...archived];
     }
   });
 
