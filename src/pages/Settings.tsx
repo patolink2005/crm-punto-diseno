@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { pipelineService } from '../services/pipeline';
 import type { PipelineStage } from '../services/pipeline';
-import { Plus, Trash2, GripVertical, Save, X, ArrowUp, ArrowDown, Download, Shield, Palette } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Save, X, ArrowUp, ArrowDown, Download, Shield, Palette, MessageSquare } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useSystemSettings } from '../context/SystemSettingsContext';
 
 export function Settings() {
   const queryClient = useQueryClient();
   const { settings, updateBranding, isUpdating } = useSystemSettings();
-  
+
   const [newName, setNewName] = useState('');
   const [newSlug, setNewSlug] = useState('');
   const [newColor, setNewColor] = useState('#6366f1');
@@ -28,7 +28,9 @@ export function Settings() {
     background_color: '#0c111d',
     surface_color: '#1a202c',
     text_color: '#f8fafc',
-    enforce_deposit_on_move: false
+    enforce_deposit_on_move: false,
+    whatsapp_new_order_template: '',
+    whatsapp_pickup_template: ''
   });
 
   useEffect(() => {
@@ -41,7 +43,9 @@ export function Settings() {
         background_color: settings.branding.background_color || '#0c111d',
         surface_color: settings.branding.surface_color || '#1a202c',
         text_color: settings.branding.text_color || '#f8fafc',
-        enforce_deposit_on_move: settings.branding.enforce_deposit_on_move || false
+        enforce_deposit_on_move: settings.branding.enforce_deposit_on_move || false,
+        whatsapp_new_order_template: settings.branding.whatsapp_new_order_template || '',
+        whatsapp_pickup_template: settings.branding.whatsapp_pickup_template || ''
       });
     }
   }, [settings]);
@@ -168,29 +172,29 @@ export function Settings() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Nombre de la Aplicación</label>
-            <input 
-              className="input-base" 
-              value={brandForm.app_name} 
-              onChange={e => setBrandForm({...brandForm, app_name: e.target.value})}
+            <input
+              className="input-base"
+              value={brandForm.app_name}
+              onChange={e => setBrandForm({ ...brandForm, app_name: e.target.value })}
               placeholder="Ej: Punto Diseño"
             />
           </div>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Logo URL</label>
-            <input 
-              className="input-base" 
-              value={brandForm.logo_url} 
-              onChange={e => setBrandForm({...brandForm, logo_url: e.target.value})}
+            <input
+              className="input-base"
+              value={brandForm.logo_url}
+              onChange={e => setBrandForm({ ...brandForm, logo_url: e.target.value })}
               placeholder="https://ejemplo.com/logo.png"
             />
           </div>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Color Principal</label>
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-              <input 
-                type="color" 
-                value={brandForm.primary_color} 
-                onChange={e => setBrandForm({...brandForm, primary_color: e.target.value})}
+              <input
+                type="color"
+                value={brandForm.primary_color}
+                onChange={e => setBrandForm({ ...brandForm, primary_color: e.target.value })}
                 style={{ width: '30px', height: '30px', border: 'none', cursor: 'pointer', borderRadius: '4px' }}
               />
               <span className="text-secondary" style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>{brandForm.primary_color}</span>
@@ -199,10 +203,10 @@ export function Settings() {
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Fondo (Body)</label>
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-              <input 
-                type="color" 
-                value={brandForm.background_color || '#0c111d'} 
-                onChange={e => setBrandForm({...brandForm, background_color: e.target.value})}
+              <input
+                type="color"
+                value={brandForm.background_color || '#0c111d'}
+                onChange={e => setBrandForm({ ...brandForm, background_color: e.target.value })}
                 style={{ width: '30px', height: '30px', border: 'none', cursor: 'pointer', borderRadius: '4px' }}
               />
               <span className="text-secondary" style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>{brandForm.background_color || '#0c111d'}</span>
@@ -211,10 +215,10 @@ export function Settings() {
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Paneles (Surface)</label>
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-              <input 
-                type="color" 
-                value={brandForm.surface_color || '#1a202c'} 
-                onChange={e => setBrandForm({...brandForm, surface_color: e.target.value})}
+              <input
+                type="color"
+                value={brandForm.surface_color || '#1a202c'}
+                onChange={e => setBrandForm({ ...brandForm, surface_color: e.target.value })}
                 style={{ width: '30px', height: '30px', border: 'none', cursor: 'pointer', borderRadius: '4px' }}
               />
               <span className="text-secondary" style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>{brandForm.surface_color || '#1a202c'}</span>
@@ -223,10 +227,10 @@ export function Settings() {
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Color de Texto</label>
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-              <input 
-                type="color" 
-                value={brandForm.text_color || '#f8fafc'} 
-                onChange={e => setBrandForm({...brandForm, text_color: e.target.value})}
+              <input
+                type="color"
+                value={brandForm.text_color || '#f8fafc'}
+                onChange={e => setBrandForm({ ...brandForm, text_color: e.target.value })}
                 style={{ width: '30px', height: '30px', border: 'none', cursor: 'pointer', borderRadius: '4px' }}
               />
               <span className="text-secondary" style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>{brandForm.text_color || '#f8fafc'}</span>
@@ -234,13 +238,13 @@ export function Settings() {
           </div>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Redondeado ({brandForm.border_radius})</label>
-            <input 
-              type="range" 
-              min="0" 
-              max="24" 
+            <input
+              type="range"
+              min="0"
+              max="24"
               step="2"
-              value={parseInt(brandForm.border_radius)} 
-              onChange={e => setBrandForm({...brandForm, border_radius: `${e.target.value}px`})}
+              value={parseInt(brandForm.border_radius)}
+              onChange={e => setBrandForm({ ...brandForm, border_radius: `${e.target.value}px` })}
               style={{ width: '100%', cursor: 'pointer' }}
             />
           </div>
@@ -259,23 +263,60 @@ export function Settings() {
                 Si está activo, no se permitirán mover pedidos desde "Presupuesto" a otros estados sin registrar una seña previa.
               </p>
             </div>
-            <input 
-              type="checkbox" 
-              checked={brandForm.enforce_deposit_on_move} 
-              onChange={e => setBrandForm({...brandForm, enforce_deposit_on_move: e.target.checked})}
+            <input
+              type="checkbox"
+              checked={brandForm.enforce_deposit_on_move}
+              onChange={e => setBrandForm({ ...brandForm, enforce_deposit_on_move: e.target.checked })}
               style={{ width: '20px', height: '20px', cursor: 'pointer' }}
             />
           </label>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button 
-            className="btn btn-primary" 
+          <button
+            className="btn btn-primary"
             onClick={handleSaveBranding}
             disabled={isUpdating}
           >
             {isUpdating ? 'Guardando...' : 'Guardar Cambios Visuales'}
           </button>
+        </div>
+      </div>
+
+      {/* Notifications Section */}
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+        <h3 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <MessageSquare size={20} style={{ color: 'var(--primary-color)' }} />
+          Plantillas de Notificaciones (WhatsApp)
+        </h3>
+        <p className="text-secondary text-sm" style={{ marginBottom: '1.5rem' }}>
+          Personaliza los mensajes automáticos. Puedes usar variables como:
+          <code className="text-xs" style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 4px', borderRadius: '4px', marginLeft: '6px' }}>{`{clientName}`}</code>,
+          <code className="text-xs" style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 4px', borderRadius: '4px', marginLeft: '6px' }}>{`{orderNumber}`}</code>,
+          <code className="text-xs" style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 4px', borderRadius: '4px', marginLeft: '6px' }}>{`{items}`}</code>,
+          <code className="text-xs" style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 4px', borderRadius: '4px', marginLeft: '6px' }}>{`{total}`}</code>,
+          <code className="text-xs" style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 4px', borderRadius: '4px', marginLeft: '6px' }}>{`{deposit}`}</code>,
+          <code className="text-xs" style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 4px', borderRadius: '4px', marginLeft: '6px' }}>{`{balance}`}</code>.
+        </p>
+        <div className="form-group">
+          <label className="form-label">Mensaje de Nuevo Pedido</label>
+          <textarea
+            className="input-base"
+            rows={5}
+            value={brandForm.whatsapp_new_order_template}
+            onChange={e => setBrandForm({ ...brandForm, whatsapp_new_order_template: e.target.value })}
+            placeholder="Ej: Hola {clientName}, hemos creado tu pedido {orderNumber} con el siguiente detalle..."
+          />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Mensaje de Pedido Listo para Retirar</label>
+          <textarea
+            className="input-base"
+            rows={3}
+            value={brandForm.whatsapp_pickup_template}
+            onChange={e => setBrandForm({ ...brandForm, whatsapp_pickup_template: e.target.value })}
+            placeholder="Ej: ¡Hola {clientName}! Tu pedido {orderNumber} está listo para retirar."
+          />
         </div>
       </div>
 
@@ -288,13 +329,13 @@ export function Settings() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
           {stages?.map((stage, index) => (
-            <div key={stage.id} style={{ 
+            <div key={stage.id} style={{
               display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem',
               background: 'rgba(0,0,0,0.15)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)'
             }}>
               <GripVertical size={16} style={{ color: 'var(--color-text-secondary)', flexShrink: 0 }} />
               <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: stage.color, flexShrink: 0 }} />
-              
+
               {editingId === stage.id ? (
                 <>
                   <input className="input-base" value={editName} onChange={e => setEditName(e.target.value)} style={{ flex: 1 }} />
@@ -375,9 +416,9 @@ export function Settings() {
             {backupLoading ? 'Generando respaldo...' : 'Descargar Respaldo Ahora'}
           </button>
           {backupMsg && (
-            <span style={{ 
-              fontSize: '0.875rem', 
-              color: backupMsg.startsWith('✅') ? 'var(--success-color)' : 'var(--danger-color)' 
+            <span style={{
+              fontSize: '0.875rem',
+              color: backupMsg.startsWith('✅') ? 'var(--success-color)' : 'var(--danger-color)'
             }}>
               {backupMsg}
             </span>
@@ -390,5 +431,3 @@ export function Settings() {
     </div>
   );
 }
-
-

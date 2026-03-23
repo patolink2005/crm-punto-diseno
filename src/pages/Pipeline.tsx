@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { orderService } from '../services/orders';
+import { clientService } from '../services/clients';
 import { pipelineService } from '../services/pipeline';
 import { DndContext, DragOverlay, useDraggable, useDroppable, closestCorners } from '@dnd-kit/core';
-import type { Order } from '../types';
+import type { Order, OrderWithItems } from '../types';
 import { Plus, Eye } from 'lucide-react';
-import { OrderEditorModal } from '../components/orders/OrderEditorModal';
+import { OrderEditorModal, OrderSubmitResponse } from '../components/orders/OrderEditorModal';
 import { OrderDetailModal } from '../components/orders/OrderDetailModal';
 import { useSystemSettings } from '../context/SystemSettingsContext';
 import './Pipeline.css';
@@ -21,6 +22,56 @@ function formatCurrency(amount: number, currency?: string): string {
   const cur = currency || 'UYU';
   const symbol = cur === 'USD' ? 'U$S' : '$';
   return `${symbol}${Number(amount || 0).toLocaleString('es-UY')}`;
+}
+
+/**
+ * Opens WhatsApp with a pre-filled message.
+ * @param phone The client's phone number.
+ * @param message The message to send.
+ */
+function sendWhatsAppMessage(phone: string, message: string) {
+  if (!phone) {
+    alert('No se puede enviar el mensaje porque el cliente no tiene un número de teléfono registrado.');
+    return;
+  }
+  const whatsappUrl = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+  window.open(whatsappUrl, '_blank');
+}
+
+async function generateAndSendWhatsApp(orderId: string, type: 'new_order' | 'pickup', settings: any) {
+  const order = await orderService.getById(orderId);
+  if (!order) {
+    alert('No se encontró el pedido.');
+    return;
+  }
+  const client = await clientService.getById(order.client_id);
+  if (!client) {
+    alert('No se encontró el cliente asociado al pedido.');
+    return;
+  }
+
+  let message = '';
+  if (type === 'new_order') {
+    const template = settings?.branding?.whatsapp_new_order_template || `Hola {clientName}, hemos creado tu pedido *{orderNumber}* con el siguiente detalle:\n\n{items}\n\n*Precio Total:* {total}\n*Seña:* {deposit}\n*Saldo:* {balance}\n\n¡Gracias!`;
+    const itemsText = order.items
+      .filter((item: any) => !item.supplier_id)
+      .map((item: any) => `- ${item.description} (${formatCurrency(item.price, order.currency)})`)
+      .join('\n');
+
+    message = template
+      .replace('{clientName}', client.name)
+      .replace('{orderNumber}', formatOrderNumber(order))
+      .replace('{items}', itemsText)
+      .replace('{total}', formatCurrency(order.total, order.currency))
+      .replace('{deposit}', formatCurrency(order.deposit_amount, order.currency))
+      .replace('{balance}', formatCurrency(order.total - order.deposit_amount, order.currency));
+
+  } else if (type === 'pickup') {
+    const template = settings?.branding?.whatsapp_pickup_template || '¡Hola {clientName}! Tu pedido *{orderNumber}* está listo para retirar.';
+    message = template.replace('{clientName}', client.name).replace('{orderNumber}', formatOrderNumber(order));
+  }
+
+  sendWhatsAppMessage(client.phone || '', message);
 }
 
 function DraggableCard({ order, onClickDetail }: { order: Order; onClickDetail: (id: string) => void }) {
@@ -97,10 +148,25 @@ export function Pipeline() {
     queryFn: pipelineService.getStages
   });
 
-  const filteredOrders = orders?.filter(o => 
+  const filteredOrders = orders?.filter(o =>
     formatOrderNumber(o).toLowerCase().includes(searchTerm.toLowerCase()) ||
     ((o as any).clients?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const processTemplate = (template: string, data: Record<string, string | number>) => {
+    let message = template;
+    for (const key in data) {
+      message = message.replace(new RegExp(`{${key}}`, 'g'), String(data[key]));
+    }
+    return message;
+  };
+
+  const handleOrderCreation = async (response: OrderSubmitResponse) => {
+    setIsOrderModalOpen(false);
+    if (confirm("Pedido creado con éxito. ¿Deseas enviar el resumen por WhatsApp ahora?")) {
+      await generateAndSendWhatsApp(response.order.id, 'new_order', settings);
+    }
+  };
 
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string, status: string }) => orderService.updateStatus(id, status as any),
@@ -144,6 +210,11 @@ export function Pipeline() {
         return oldData.map(o => o.id === orderId ? { ...o, status: newStatus } : o);
       });
       updateStatusMutation.mutate({ id: orderId as string, status: newStatus });
+
+      // Send WhatsApp when moving to "para_retirar"
+      if (newStatus === 'para_retirar') {
+        generateAndSendWhatsApp(orderId as string, 'pickup', settings);
+      }
     }
   };
 
@@ -161,9 +232,9 @@ export function Pipeline() {
       </div>
 
       <div className="search-container" style={{ marginBottom: '1.5rem' }}>
-        <input 
-          type="text" 
-          placeholder="Buscar por Nº de pedido o cliente..." 
+        <input
+          type="text"
+          placeholder="Buscar por Nº de pedido o cliente..."
           className="input-base"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -173,22 +244,22 @@ export function Pipeline() {
       <DndContext collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="kanban-board">
           {columns.map(col => (
-            <DroppableColumn 
-              key={col.slug} 
-              id={col.slug} 
-              title={col.name} 
+            <DroppableColumn
+              key={col.slug}
+              id={col.slug}
+              title={col.name}
               color={col.color}
-              orders={filteredOrders?.filter(o => (o as any).status === col.slug) || []} 
+              orders={filteredOrders?.filter(o => (o as any).status === col.slug) || []}
               onClickDetail={(id) => setDetailOrderId(id)}
             />
           ))}
         </div>
         <DragOverlay>
-          {activeOrder ? <DraggableCard order={activeOrder} onClickDetail={() => {}} /> : null}
+          {activeOrder ? <DraggableCard order={activeOrder} onClickDetail={() => { }} /> : null}
         </DragOverlay>
       </DndContext>
 
-      {isOrderModalOpen && <OrderEditorModal onClose={() => setIsOrderModalOpen(false)} />}
+      {isOrderModalOpen && <OrderEditorModal onClose={() => setIsOrderModalOpen(false)} onOrderCreated={handleOrderCreation} />}
       {detailOrderId && <OrderDetailModal orderId={detailOrderId} onClose={() => setDetailOrderId(null)} />}
     </div>
   );
