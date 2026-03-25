@@ -208,8 +208,8 @@ export function OrderEditorModal({ orderId, onClose, onOrderCreated }: OrderEdit
           });
 
           if (bestResult) {
-            priceUYU += bestResult.costo_sugerido_uyu;
-            currentNestingResult = bestResult;
+            priceUYU += (bestResult as NestingResult).costo_sugerido_uyu;
+            currentNestingResult = bestResult as NestingResult;
           }
         }
       }
@@ -274,9 +274,11 @@ export function OrderEditorModal({ orderId, onClose, onOrderCreated }: OrderEdit
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['order', orderId] });
       if (onOrderCreated && !isEdit && data?.order) {
+        // Let Pipeline handle closing (it shows WhatsApp confirm first)
         onOrderCreated(data);
+      } else {
+        onClose();
       }
-      onClose();
     },
     onError: (err: Error) => alert('Error al guardar: ' + err.message)
   });

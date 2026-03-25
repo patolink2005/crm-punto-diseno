@@ -212,7 +212,9 @@ export function Pipeline() {
 
       // Send WhatsApp when moving to "para_retirar"
       if (newStatus === 'para_retirar') {
-        generateAndSendWhatsApp(orderId, 'pickup', settings);
+        if (confirm('¿Deseas notificar al cliente por WhatsApp que su pedido está listo para retirar?')) {
+          generateAndSendWhatsApp(orderId, 'pickup', settings);
+        }
       }
     }
   };
