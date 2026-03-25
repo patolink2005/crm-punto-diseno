@@ -1,18 +1,8 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, type ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-
-export interface BrandingSettings {
-  logo_url?: string;
-  primary_color: string;
-  primary_hover: string;
-  border_radius: string;
-  app_name: string;
-  background_color?: string;
-  surface_color?: string;
-  text_color?: string;
-  enforce_deposit_on_move?: boolean;
-}
+import type { BrandingSettings } from '../types';
 
 interface SystemSettings {
   branding: BrandingSettings;

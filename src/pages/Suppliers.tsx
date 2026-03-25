@@ -24,19 +24,19 @@ export function Suppliers() {
   const createMutation = useMutation({
     mutationFn: supplierService.create,
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['suppliers'] }); closeModal(); },
-    onError: (error: any) => alert('Error al crear proveedor: ' + error.message)
+    onError: (error: Error) => alert('Error al crear proveedor: ' + error.message)
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Supplier> }) => supplierService.update(id, data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['suppliers'] }); closeModal(); },
-    onError: (error: any) => alert('Error al actualizar proveedor: ' + error.message)
+    onError: (error: Error) => alert('Error al actualizar proveedor: ' + error.message)
   });
 
   const deleteMutation = useMutation({
     mutationFn: supplierService.delete,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['suppliers'] }),
-    onError: (err: any) => alert('Error al eliminar proveedor: ' + err.message)
+    onError: (err: Error) => alert('Error al eliminar proveedor: ' + err.message)
   });
 
   const openModal = (supplier?: Supplier) => {

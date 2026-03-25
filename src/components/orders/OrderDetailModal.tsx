@@ -5,6 +5,15 @@ import { pipelineService } from '../../services/pipeline';
 import { X, FileText, Archive, Package, Edit, Calendar, Trash2, MessageSquare, DollarSign } from 'lucide-react';
 import { OrderEditorModal } from './OrderEditorModal';
 
+interface OrderItemDetail {
+  id: string;
+  products_config?: { name: string };
+  selected_attributes: Record<string, string | number>;
+  suppliers?: { name: string };
+  quantity: number;
+  calculated_price: number;
+}
+
 export function OrderDetailModal({ orderId, onClose }: { orderId: string; onClose: () => void }) {
   const queryClient = useQueryClient();
   const [isEditingOrder, setIsEditingOrder] = useState(false);
@@ -26,7 +35,7 @@ export function OrderDetailModal({ orderId, onClose }: { orderId: string; onClos
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       onClose();
     },
-    onError: (err: any) => alert('Error al archivar: ' + err.message)
+    onError: (err: Error) => alert('Error al archivar: ' + err.message)
   });
 
   const deleteOrderMutation = useMutation({
@@ -35,7 +44,7 @@ export function OrderDetailModal({ orderId, onClose }: { orderId: string; onClos
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       onClose();
     },
-    onError: (err: any) => alert('Error al eliminar pedido: ' + err.message)
+    onError: (err: Error) => alert('Error al eliminar pedido: ' + err.message)
   });
 
   if (isLoading) return (
@@ -82,10 +91,10 @@ export function OrderDetailModal({ orderId, onClose }: { orderId: string; onClos
               <div className="text-secondary text-sm" style={{ marginBottom: '0.25rem' }}>Cliente</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <div style={{ fontWeight: 600 }}>{order.clients?.name || 'Desconocido'}</div>
-                {(order as any).clients?.phone && (
-                  <a 
-                    href={`https://wa.me/${(order as any).clients.phone.replace(/\D/g, '')}`} 
-                    target="_blank" 
+                {order.clients?.phone && (
+                  <a
+                    href={`https://wa.me/${order.clients.phone.replace(/\D/g, '')}`}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="btn btn-outline"
                     style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem', color: '#25D366', borderColor: 'rgba(37, 211, 102, 0.2)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
@@ -95,7 +104,7 @@ export function OrderDetailModal({ orderId, onClose }: { orderId: string; onClos
                 )}
               </div>
             </div>
-            
+
             <div className="glass-panel" style={{ padding: '1rem', background: 'rgba(0,0,0,0.15)' }}>
               <div className="text-secondary text-sm" style={{ marginBottom: '0.25rem' }}>Total ({cur})</div>
               <div style={{ fontWeight: 600, color: 'var(--success-color)', fontSize: '1.2rem' }}>{sym}{order.total?.toLocaleString('es-UY')}</div>
@@ -120,7 +129,7 @@ export function OrderDetailModal({ orderId, onClose }: { orderId: string; onClos
           {/* Payment Summary (Plan B) */}
           <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1.5rem', background: 'linear-gradient(135deg, rgba(0,0,0,0.2), rgba(0,0,0,0.1))', border: '1px solid var(--color-border)' }}>
             <h4 style={{ marginTop: 0, marginBottom: '1rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <DollarSign size={16} style={{ color: 'var(--success-color)' }} /> 
+              <DollarSign size={16} style={{ color: 'var(--success-color)' }} />
               Resumen de Pago
             </h4>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
@@ -130,12 +139,12 @@ export function OrderDetailModal({ orderId, onClose }: { orderId: string; onClos
               </div>
               <div>
                 <div className="text-secondary text-xs">Seña Recibida ({order.payment_method || 'N/A'})</div>
-                <div style={{ fontWeight: 600, color: 'var(--success-color)' }}>{sym}{(order as any).deposit_amount?.toLocaleString('es-UY') || '0'}</div>
+                <div style={{ fontWeight: 600, color: 'var(--success-color)' }}>{sym}{order.deposit_amount?.toLocaleString('es-UY') || '0'}</div>
               </div>
               <div>
                 <div className="text-secondary text-xs">Saldo Pendiente</div>
-                <div style={{ fontWeight: 700, color: (order as any).balance_due > 0 ? 'var(--danger-color)' : 'var(--success-color)' }}>
-                  {sym}{(order as any).balance_due?.toLocaleString('es-UY') || '0'}
+                <div style={{ fontWeight: 700, color: order.balance_due > 0 ? 'var(--danger-color)' : 'var(--success-color)' }}>
+                  {sym}{order.balance_due?.toLocaleString('es-UY') || '0'}
                 </div>
               </div>
             </div>
@@ -168,7 +177,7 @@ export function OrderDetailModal({ orderId, onClose }: { orderId: string; onClos
                     </tr>
                   </thead>
                   <tbody>
-                    {order.items.map((item: any) => (
+                    {order.items.map((item: OrderItemDetail) => (
                       <tr key={item.id}>
                         <td style={{ fontWeight: 600 }}>{item.products_config?.name || 'Producto'}</td>
                         <td style={{ fontSize: '0.8rem' }} className="text-secondary">
@@ -197,8 +206,8 @@ export function OrderDetailModal({ orderId, onClose }: { orderId: string; onClos
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             {!order.archived_at && (order.status === 'facturado' || order.status === 'entregado') && (
-              <button 
-                className="btn btn-primary" 
+              <button
+                className="btn btn-primary"
                 style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
                 onClick={() => {
                   if (confirm('¿Deseas archivar este pedido? Se moverá al historial de pedidos finalizados.')) {
@@ -210,9 +219,9 @@ export function OrderDetailModal({ orderId, onClose }: { orderId: string; onClos
                 <Archive size={16} /> Archivar
               </button>
             )}
-            
-            <button 
-              className="btn btn-outline" 
+
+            <button
+              className="btn btn-outline"
               style={{ color: 'var(--danger-color)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
               onClick={() => {
                 if (confirm('¿ELIMINAR PEDIDO PERMANENTEMENTE? Esta acción no se puede deshacer.')) {

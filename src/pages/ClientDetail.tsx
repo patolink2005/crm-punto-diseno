@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
@@ -9,9 +9,8 @@ export function ClientDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
-  const [files, setFiles] = useState<any[]>([]);
 
-  const { data: client, isLoading } = useQuery({
+  const { data: client, isLoading: isLoadingClient } = useQuery({
     queryKey: ['client', id],
     queryFn: async () => {
       const { data, error } = await supabase.from('clients').select('*').eq('id', id).single();
@@ -21,17 +20,19 @@ export function ClientDetail() {
     enabled: !!id
   });
 
-  const fetchFiles = async () => {
-    if (!id) return;
-    const { data, error } = await supabase.storage.from('client_documents').list(id + '/');
-    if (!error && data) {
-      setFiles(data);
-    }
-  };
-
-  useEffect(() => {
-    fetchFiles();
-  }, [id]);
+  const { data: files, isLoading: isLoadingFiles, refetch: fetchFiles } = useQuery({
+    queryKey: ['client_files', id],
+    queryFn: async () => {
+      if (!id) return [];
+      const { data, error } = await supabase.storage.from('client_documents').list(id + '/');
+      if (error) {
+        console.error('Error fetching files:', error);
+        return [];
+      }
+      return data;
+    },
+    enabled: !!id
+  });
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -42,7 +43,7 @@ export function ClientDetail() {
     
     const { error } = await supabase.storage.from('client_documents').upload(filePath, file);
     if (!error) {
-      fetchFiles();
+      fetchFiles(); // refetch the files list
     } else {
       console.error(error);
       alert('Error al subir archivo');
@@ -56,7 +57,7 @@ export function ClientDetail() {
     return data.publicUrl;
   };
 
-  if (isLoading) return <div style={{ padding: '2rem' }}>Cargando ficha del cliente...</div>;
+  if (isLoadingClient || isLoadingFiles) return <div style={{ padding: '2rem' }}>Cargando ficha del cliente...</div>;
   if (!client) return <div style={{ padding: '2rem' }}>Cliente no encontrado</div>;
 
   return (
@@ -103,10 +104,10 @@ export function ClientDetail() {
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {files.length === 0 ? (
+            {(files || []).length === 0 ? (
               <p className="text-secondary text-sm text-center" style={{ margin: '2rem 0' }}>No hay documentos adjuntos</p>
             ) : (
-              files.map((file) => (
+              (files || []).map((file) => (
                 <div key={file.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', borderRadius: 'var(--radius-md)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <File size={16} className="text-secondary" />
@@ -124,3 +125,4 @@ export function ClientDetail() {
     </div>
   );
 }
+

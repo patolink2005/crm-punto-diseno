@@ -24,3 +24,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Backups generados por la app
+crmpunto_backup_*.json
+build_log.txt

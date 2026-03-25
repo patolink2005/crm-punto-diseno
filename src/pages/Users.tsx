@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { Shield, ShieldAlert, UserCog, UserPlus, X, Info, Lock, Unlock, CheckCircle, Ban } from 'lucide-react';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore, type Profile } from '../store/authStore';
 import './Clients.css'; // Reuse common responsive styles
 
 export function Users() {
@@ -15,8 +15,7 @@ export function Users() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*');
       
       if (error) throw error;
       return data;
@@ -38,7 +37,7 @@ export function Users() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       alert('Error al actualizar el rol: ' + err.message);
     }
   });
@@ -58,7 +57,7 @@ export function Users() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       alert('Error al actualizar seguridad: ' + err.message);
     }
   });
@@ -78,7 +77,7 @@ export function Users() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       alert('Error al actualizar estado de cuenta: ' + err.message);
     }
   });
@@ -165,12 +164,11 @@ export function Users() {
                 <th>Rol</th>
                 <th>Seguridad 2FA</th>
                 <th>Estado Acceso</th>
-                <th>Desde</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {profiles?.map((profile: any) => (
+              {profiles?.map((profile: Profile) => (
                 <tr key={profile.id}>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -183,7 +181,6 @@ export function Users() {
                       </div>
                       <div>
                         <div style={{ fontWeight: 600 }}>{profile.full_name || 'Sin Nombre'}</div>
-                        {profile.email && <div className="text-sm text-secondary">{profile.email}</div>}
                         {profile.id === currentUser?.id && <span className="badge-role" style={{ fontSize: '0.65rem', background: 'rgba(99,102,241,0.15)', color: 'var(--primary-color)' }}>Tú</span>}
                       </div>
                     </div>
@@ -220,9 +217,6 @@ export function Users() {
                         <Ban size={14} style={{ marginRight: '0.25rem' }} /> Inactivo
                       </span>
                     )}
-                  </td>
-                  <td className="text-secondary">
-                    {new Date(profile.created_at).toLocaleDateString('es-UY')}
                   </td>
                   <td style={{ display: 'flex', gap: '0.5rem' }}>
                     {profile.id === currentUser?.id ? (
@@ -269,7 +263,7 @@ export function Users() {
           <div style={{ padding: '2rem', textAlign: 'center' }}>Cargando equipo...</div>
         ) : (
           <div style={{ display: 'grid', gap: '1rem' }}>
-            {profiles?.map((profile: any) => (
+            {profiles?.map((profile: Profile) => (
               <div key={profile.id} className="glass-panel" style={{ padding: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
@@ -306,7 +300,6 @@ export function Users() {
                     {profile.is_active ? 'Activo' : 'Inactivo'}
                   </span>
                 </div>
-                {profile.email && <div className="text-secondary text-sm" style={{ marginBottom: '1rem', wordBreak: 'break-all' }}>{profile.email}</div>}
                 
                 {profile.id === currentUser?.id ? (
                   <button 

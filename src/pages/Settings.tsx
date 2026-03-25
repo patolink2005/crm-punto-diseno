@@ -44,8 +44,8 @@ export function Settings() {
         surface_color: settings.branding.surface_color || '#1a202c',
         text_color: settings.branding.text_color || '#f8fafc',
         enforce_deposit_on_move: settings.branding.enforce_deposit_on_move || false,
-        whatsapp_new_order_template: (settings.branding as any).whatsapp_new_order_template ?? '',
-        whatsapp_pickup_template: (settings.branding as any).whatsapp_pickup_template ?? ''
+        whatsapp_new_order_template: settings.branding.whatsapp_new_order_template ?? '',
+        whatsapp_pickup_template: settings.branding.whatsapp_pickup_template ?? ''
       });
     }
   }, [settings]);
@@ -58,19 +58,19 @@ export function Settings() {
   const createMutation = useMutation({
     mutationFn: pipelineService.createStage,
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['pipeline-stages'] }); setNewName(''); setNewSlug(''); },
-    onError: (err: any) => alert('Error al crear etapa: ' + err.message)
+    onError: (err: Error) => alert('Error al crear etapa: ' + err.message)
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: Partial<PipelineStage> }) => pipelineService.updateStage(id, updates),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['pipeline-stages'] }); setEditingId(null); },
-    onError: (err: any) => alert('Error al actualizar etapa: ' + err.message)
+    onError: (err: Error) => alert('Error al actualizar etapa: ' + err.message)
   });
 
   const deleteMutation = useMutation({
     mutationFn: pipelineService.deleteStage,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pipeline-stages'] }),
-    onError: (err: any) => alert('Error al eliminar etapa: ' + err.message)
+    onError: (err: Error) => alert('Error al eliminar etapa: ' + err.message)
   });
 
   const reorderMutation = useMutation({
@@ -124,9 +124,13 @@ export function Settings() {
       const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      const date = new Date().toISOString().slice(0, 10);
+      const now = new Date();
+      const day = String(now.getDate()).padStart(2, '0');
+      const month = String(now.getMonth() + 1).padStart(2, '0'); // Los meses son 0-indexed
+      const year = now.getFullYear();
+      const formattedDate = `${day}-${month}-${year}`;
       a.href = url;
-      a.download = `crmpunto_backup_${date}.json`;
+      a.download = `crmpunto_backup_${formattedDate}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -134,8 +138,12 @@ export function Settings() {
 
       const totalRecords = Object.values(backup.tables).reduce((acc, t) => acc + t.length, 0);
       setBackupMsg(`✅ Respaldo descargado: ${totalRecords} registros en total.`);
-    } catch (err: any) {
-      setBackupMsg('❌ Error al generar respaldo: ' + err.message);
+    } catch (err) {
+      if (err instanceof Error) {
+        setBackupMsg('❌ Error al generar respaldo: ' + err.message);
+      } else {
+        setBackupMsg('❌ Error al generar respaldo: Ha ocurrido un error desconocido.');
+      }
     } finally {
       setBackupLoading(false);
     }

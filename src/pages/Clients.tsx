@@ -31,7 +31,7 @@ export function Clients() {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       closeModal();
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       alert('Error al crear cliente: ' + (err.message || 'Error desconocido'));
     }
   });
@@ -42,7 +42,7 @@ export function Clients() {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       closeModal();
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       alert('Error al actualizar cliente: ' + (err.message || 'Error desconocido'));
     }
   });
@@ -50,7 +50,7 @@ export function Clients() {
   const deleteMutation = useMutation({
     mutationFn: clientService.delete,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['clients'] }),
-    onError: (err: any) => {
+    onError: (err: Error) => {
       alert('Error al eliminar cliente: ' + (err.message || 'Error desconocido'));
     }
   });
@@ -238,7 +238,7 @@ export function Clients() {
                 <select 
                   className="input-base" 
                   value={formData.status} 
-                  onChange={e => setFormData({...formData, status: e.target.value as any})}
+                  onChange={e => setFormData({...formData, status: e.target.value as Client['status']})}
                 >
                   <option value="activo">Activo</option>
                   <option value="potencial">Potencial</option>

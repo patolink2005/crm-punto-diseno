@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import type { Factor } from '@supabase/supabase-js';
 import { useAuthStore } from '../store/authStore';
 import { QRCodeSVG } from 'qrcode.react';
 import './Login.css';
@@ -21,14 +22,27 @@ export function Login() {
   
   const navigate = useNavigate();
   const { session, isInitialized, profile } = useAuthStore();
-  
-  useEffect(() => {
-    if (isInitialized && session) {
-      checkMfaStatus();
-    }
-  }, [isInitialized, session, profile]);
 
-  const checkMfaStatus = async () => {
+  const start2FASetup = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase.auth.mfa.enroll({ 
+      factorType: 'totp',
+      friendlyName: 'Punto Diseño ' + new Date().getTime()
+    });
+    if (error) {
+      setError('Error al configurar 2FA: ' + error.message);
+      setLoading(false);
+      return;
+    }
+    
+    setFactorId(data.id);
+    setQrCode(data.totp.uri || data.totp.qr_code);
+    setSecret(data.totp.secret);
+    setStep('SETUP_2FA');
+    setLoading(false);
+  }, []);
+
+  const checkMfaStatus = useCallback(async () => {
     const { data: aalData, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (aalError) {
       console.error(aalError);
@@ -55,10 +69,10 @@ export function Login() {
     // List factors to correctly determine path
     const factors = await supabase.auth.mfa.listFactors();
     const allFactors = factors.data?.all || [];
-    const totpFactors = allFactors.filter((f: any) => f.factor_type === 'totp');
+    const totpFactors = allFactors.filter((f: Factor) => f.factor_type === 'totp');
     
-    const verified = totpFactors.find((f: any) => f.status === 'verified');
-    const unverifiedFactors = totpFactors.filter((f: any) => f.status !== 'verified');
+    const verified = totpFactors.find((f: Factor) => f.status === 'verified');
+    const unverifiedFactors = totpFactors.filter((f: Factor) => f.status !== 'verified');
 
     if (verified) {
       setFactorId(verified.id);
@@ -72,26 +86,14 @@ export function Login() {
       }
       start2FASetup();
     }
-  };
-
-  const start2FASetup = async () => {
-    setLoading(true);
-    const { data, error } = await supabase.auth.mfa.enroll({ 
-      factorType: 'totp',
-      friendlyName: 'Punto Diseño ' + new Date().getTime()
-    });
-    if (error) {
-      setError('Error al configurar 2FA: ' + error.message);
-      setLoading(false);
-      return;
+  }, [navigate, profile, start2FASetup]);
+  
+  useEffect(() => {
+    if (isInitialized && session) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      checkMfaStatus();
     }
-    
-    setFactorId(data.id);
-    setQrCode(data.totp.uri || data.totp.qr_code);
-    setSecret(data.totp.secret);
-    setStep('SETUP_2FA');
-    setLoading(false);
-  };
+  }, [isInitialized, session, checkMfaStatus]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

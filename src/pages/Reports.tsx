@@ -27,7 +27,7 @@ export function Reports() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reports-orders'] });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       alert('Error al eliminar el pedido: ' + err.message);
     },
   });
@@ -55,7 +55,7 @@ export function Reports() {
     const rows = reportData.map(o => [
       new Date(o.created_at).toLocaleDateString('es-UY'),
       o.order_number ? `#${String(o.order_number).padStart(4, '0')}` : o.id.slice(0, 6),
-      (o as any).clients?.name || 'Desconocido',
+      o.clients?.name || 'Desconocido',
       o.currency,
       o.total,
       o.exchange_rate || 1,
@@ -135,7 +135,7 @@ export function Reports() {
                   <tr key={o.id}>
                     <td>{new Date(o.created_at).toLocaleDateString('es-UY')}</td>
                     <td style={{ fontWeight: 600 }}>{orderNum}</td>
-                    <td>{(o as any).clients?.name || 'Desconocido'}</td>
+                    <td>{o.clients?.name || 'Desconocido'}</td>
                     <td style={{ textAlign: 'right', color: o.currency === 'USD' ? '#fbbf24' : 'inherit' }}>
                       {sym}{o.total.toLocaleString('es-UY')}
                     </td>

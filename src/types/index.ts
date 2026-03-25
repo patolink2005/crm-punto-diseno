@@ -22,7 +22,7 @@ export interface Client {
   email: string | null;
   phone: string | null;
   status: 'activo' | 'potencial' | 'inactivo';
-  preferences: Record<string, any>;
+  preferences: Record<string, string | number>;
   created_at: string;
   updated_at: string;
 }
@@ -62,13 +62,13 @@ export interface ProductConfig {
   created_at: string;
 }
 
-export type OrderStatus = 'nuevo_pedido' | 'presupuestado' | 'diseno' | 'produccion' | 'control_calidad' | 'entregado' | 'facturado';
+export type OrderStatus = 'nuevo_pedido' | 'presupuestado' | 'diseno' | 'produccion' | 'control_calidad' | 'para_retirar' | 'entregado' | 'facturado';
 
 export interface Order {
   id: string;
   order_number: number;
   client_id: string;
-  client?: Client;
+  clients?: Client; // Corrected from 'client' to match Supabase join
   status: OrderStatus;
   total_amount?: number; // legacy
   total: number;
@@ -80,6 +80,9 @@ export interface Order {
   updated_at: string;
   archived_at?: string;
   items?: OrderItem[];
+  deposit_amount: number;
+  payment_method: string | null;
+  balance_due: number;
 }
 
 export interface OrderItem {
@@ -88,10 +91,31 @@ export interface OrderItem {
   product_config_id: string;
   product?: ProductConfig;
   products_config?: ProductConfig; // Compatibility with legacy joins
-  selected_attributes: Record<string, any>;
+  selected_attributes: Record<string, string | number>;
   quantity: number;
   calculated_price: number;
   supplier_id?: string;
   suppliers?: Supplier; // For joins
   created_at: string;
+}
+
+export interface OrderSubmitResponse {
+  order: {
+    id: string;
+    client_id: string;
+  };
+}
+
+export interface BrandingSettings {
+  app_name: string;
+  primary_color: string;
+  border_radius: string;
+  logo_url?: string;
+  background_color?: string;
+  surface_color?: string;
+  text_color?: string;
+  enforce_deposit_on_move?: boolean;
+  primary_hover?: string;
+  whatsapp_new_order_template?: string;
+  whatsapp_pickup_template?: string;
 }

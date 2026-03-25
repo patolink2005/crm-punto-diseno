@@ -16,12 +16,12 @@ export function OrderHistory() {
   });
 
   const filteredOrders = archivedOrders?.filter(o => {
-    const matchesSearch = 
+    const matchesSearch =
       (o.order_number?.toString() || '').includes(searchTerm) ||
-      ((o as any).clients?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesType = filterType === 'all' || (o as any).currency === filterType;
-    
+      (o.clients?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesType = filterType === 'all' || o.currency === filterType;
+
     return matchesSearch && matchesType;
   });
 
@@ -33,10 +33,10 @@ export function OrderHistory() {
     const rows = filteredOrders.map(o => [
       new Date(o.archived_at!).toLocaleDateString('es-UY'),
       o.order_number ? `#${String(o.order_number).padStart(4, '0')}` : o.id.slice(0, 6),
-      (o as any).clients?.name || 'Desconocido',
-      (o as any).currency || 'UYU',
-      (o as any).total || 0,
-      (o as any).total_uyu || 0,
+      o.clients?.name || 'Desconocido',
+      o.currency || 'UYU',
+      o.total || 0,
+      o.total_uyu || 0,
       o.status
     ]);
 
@@ -70,19 +70,19 @@ export function OrderHistory() {
 
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
         <div className="search-container" style={{ flex: 1, minWidth: '300px' }}>
-          <input 
-            type="text" 
-            placeholder="Buscar por Nº de pedido o cliente..." 
+          <input
+            type="text"
+            placeholder="Buscar por Nº de pedido o cliente..."
             className="input-base"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <select 
-          className="input-base" 
+        <select
+          className="input-base"
           style={{ width: 'auto' }}
           value={filterType}
-          onChange={(e) => setFilterType(e.target.value as any)}
+          onChange={(e) => setFilterType(e.target.value as 'all' | 'USD' | 'UYU')}
         >
           <option value="all">Todas las Monedas</option>
           <option value="USD">Dólares (USD)</option>
@@ -108,14 +108,14 @@ export function OrderHistory() {
             <tbody>
               {filteredOrders?.map((order) => {
                 const orderNum = order.order_number ? `#${String(order.order_number).padStart(4, '0')}` : `#${order.id.slice(0, 6)}`;
-                const sym = (order as any).currency === 'USD' ? 'U$S' : '$';
+                const sym = order.currency === 'USD' ? 'U$S' : '$';
                 return (
                   <tr key={order.id}>
                     <td>{new Date(order.archived_at!).toLocaleDateString('es-UY')}</td>
                     <td style={{ fontWeight: 600 }}>{orderNum}</td>
-                    <td>{(order as any).clients?.name || 'Desconocido'}</td>
+                    <td>{order.clients?.name || 'Desconocido'}</td>
                     <td style={{ color: 'var(--success-color)', fontWeight: 600 }}>
-                      {sym}{(order as any).total}
+                      {sym}{order.total}
                     </td>
                     <td>
                       <span className={`badge-status status-${order.status}`}>
@@ -143,7 +143,7 @@ export function OrderHistory() {
           <div style={{ display: 'grid', gap: '1rem' }}>
             {filteredOrders?.map((order) => {
               const orderNum = order.order_number ? `#${String(order.order_number).padStart(4, '0')}` : `#${order.id.slice(0, 6)}`;
-              const sym = (order as any).currency === 'USD' ? 'U$S' : '$';
+              const sym = order.currency === 'USD' ? 'U$S' : '$';
               return (
                 <div key={order.id} className="glass-panel" style={{ padding: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
@@ -151,11 +151,11 @@ export function OrderHistory() {
                     <span className={`badge-status status-${order.status}`}>{order.status}</span>
                   </div>
                   <div className="text-sm" style={{ marginBottom: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><User size={14} className="text-secondary" /> {(order as any).clients?.name || 'Desconocido'}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><User size={14} className="text-secondary" /> {order.clients?.name || 'Desconocido'}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}><Calendar size={14} className="text-secondary" /> {new Date(order.archived_at!).toLocaleDateString('es-UY')}</div>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontWeight: 600, color: 'var(--success-color)', fontSize: '1.1rem' }}>{sym}{(order as any).total}</div>
+                    <div style={{ fontWeight: 600, color: 'var(--success-color)', fontSize: '1.1rem' }}>{sym}{order.total}</div>
                     <button className="btn btn-outline" onClick={() => setSelectedOrder(order.id)}>
                       <Eye size={14} /> Detalle
                     </button>

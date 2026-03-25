@@ -1,8 +1,14 @@
 import { supabase } from '../lib/supabase';
 import type { Order, OrderStatus, OrderItem } from '../types';
 
+// Define a type for the shape of an order returned from a join
+// This helps ensure the 'clients' property is recognized by TypeScript
+type OrderWithClient = Order & {
+  clients: { name: string, phone: string } | null;
+};
+
 export const orderService = {
-  getAll: async () => {
+  getAll: async (): Promise<OrderWithClient[]> => {
     const { data, error } = await supabase
       .from('orders')
       .select('*, clients(name, phone)')
@@ -10,10 +16,10 @@ export const orderService = {
       .order('created_at', { ascending: false });
     
     if (error) throw error;
-    return data as Order[];
+    return (data as OrderWithClient[]) || [];
   },
 
-  getArchived: async () => {
+  getArchived: async (): Promise<OrderWithClient[]> => {
     const { data, error } = await supabase
       .from('orders')
       .select('*, clients(name, phone)')
@@ -21,10 +27,10 @@ export const orderService = {
       .order('archived_at', { ascending: false });
     
     if (error) throw error;
-    return data as Order[];
+    return (data as OrderWithClient[]) || [];
   },
 
-  archiveOrder: async (id: string) => {
+  archiveOrder: async (id: string): Promise<Order> => {
     const { data, error } = await supabase
       .from('orders')
       .update({ archived_at: new Date().toISOString() })
@@ -33,43 +39,49 @@ export const orderService = {
       .single();
     
     if (error) throw error;
+    if (!data) throw new Error(`Order with id ${id} not found to archive.`);
     return data;
   },
 
-  deleteOrder: async (id: string) => {
+  deleteOrder: async (id: string): Promise<void> => {
     const { error } = await supabase.from('orders').delete().eq('id', id);
     if (error) throw error;
   },
 
-  async getById(id: string) {
+  async getById(id: string): Promise<Order> {
     const { data: order, error } = await supabase
       .from('orders')
       .select('*, clients(name, phone)')
       .eq('id', id)
       .single();
+
     if (error) throw error;
+    if (!order) throw new Error(`Order with id ${id} not found.`);
 
     const { data: items, error: itemsError } = await supabase
       .from('order_items')
       .select('*, products_config(name), suppliers(name)')
       .eq('order_id', id);
+
     if (itemsError) throw itemsError;
 
     return { ...order, items: items || [] };
   },
 
-  async updateOrder(id: string, updates: { notes?: string; status?: OrderStatus; estimated_delivery_date?: string }) {
+  async updateOrder(id: string, updates: Partial<Order>): Promise<Order> {
     const { data, error } = await supabase
       .from('orders')
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id)
       .select()
       .single();
+
     if (error) throw error;
+    if (!data) throw new Error(`Order with id ${id} not found to update.`);
     return data;
   },
 
-  async updateStatus(id: string, status: OrderStatus) {
+  async updateStatus(id: string, status: OrderStatus): Promise<Order> {
     const { data, error } = await supabase
       .from('orders')
       .update({ status, updated_at: new Date().toISOString() })
@@ -77,22 +89,23 @@ export const orderService = {
       .select()
       .single();
     if (error) throw error;
+    if (!data) throw new Error(`Order with id ${id} not found to update status.`);
     return data;
   },
 
-  async deleteItem(itemId: string) {
+  async deleteItem(itemId: string): Promise<void> {
     const { error } = await supabase.from('order_items').delete().eq('id', itemId);
     if (error) throw error;
   },
 
-  async addItem(item: Partial<OrderItem> & { order_id: string }) {
+  async addItem(item: Partial<OrderItem> & { order_id: string }): Promise<OrderItem> {
     const { data, error } = await supabase.from('order_items').insert([item]).select().single();
     if (error) throw error;
+    if (!data) throw new Error('Failed to create item.');
     return data;
   },
 
-  async updateWithItems(orderId: string, orderData: Partial<Order>, items: Partial<OrderItem>[]) {
-    // 1. Update order metadata
+  async updateWithItems(orderId: string, orderData: Partial<Order>, items: Partial<OrderItem>[]): Promise<Order> {
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .update({ ...orderData, updated_at: new Date().toISOString() })
@@ -101,8 +114,8 @@ export const orderService = {
       .single();
     
     if (orderError) throw orderError;
+    if (!order) throw new Error(`Order with id ${orderId} not found to update.`);
 
-    // 2. Delete existing items
     const { error: deleteError } = await supabase
       .from('order_items')
       .delete()
@@ -110,14 +123,11 @@ export const orderService = {
     
     if (deleteError) throw deleteError;
 
-    // 3. Insert new items
     if (items.length > 0) {
+      // The 'any' casts are removed as we trust the incoming partial type
       const itemsToInsert = items.map(item => ({
+        ...item,
         order_id: orderId,
-        product_config_id: (item as any).product_config_id,
-        selected_attributes: (item as any).selected_attributes,
-        quantity: item.quantity,
-        calculated_price: (item as any).calculated_price,
         supplier_id: item.supplier_id || null
       }));
       const { error: insertError } = await supabase
@@ -130,9 +140,9 @@ export const orderService = {
     return order;
   },
 
-  async createWithItems(orderData: Partial<Order>, items: Partial<OrderItem>[]) {
+  async createWithItems(orderData: Partial<Order>, items: Partial<OrderItem>[]): Promise<Order> {
     const { data: userData, error: userError } = await supabase.auth.getUser();
-    if (userError) throw userError;
+    if (userError || !userData.user) throw userError || new Error('User not found');
 
     const { data: order, error } = await supabase
       .from('orders')
@@ -140,15 +150,13 @@ export const orderService = {
       .select()
       .single();
     if (error) throw error;
+    if (!order) throw new Error('Failed to create order.');
 
     if (items.length > 0) {
       const itemsToInsert = items.map(item => ({
+        ...item,
         order_id: order.id,
-        product_config_id: (item as any).product_config_id,
-        selected_attributes: (item as any).selected_attributes,
-        quantity: item.quantity,
-        calculated_price: (item as any).calculated_price,
-        supplier_id: item.supplier_id || null
+        supplier_id: item.supplier_id || null,
       }));
       const { error: itemsError } = await supabase.from('order_items').insert(itemsToInsert);
       if (itemsError) {

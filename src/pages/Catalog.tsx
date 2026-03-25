@@ -24,13 +24,13 @@ export function Catalog() {
   const createMutation = useMutation({
     mutationFn: productService.create,
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['products'] }); closeModal(); },
-    onError: (error: any) => { setFormError('Error al crear el producto: ' + error.message); }
+    onError: (error: Error) => { setFormError('Error al crear el producto: ' + error.message); }
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string, data: Partial<ProductConfig> }) => productService.update(id, data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['products'] }); closeModal(); },
-    onError: (error: any) => { setFormError('Error al actualizar el producto: ' + error.message); }
+    onError: (error: Error) => { setFormError('Error al actualizar el producto: ' + error.message); }
   });
 
   const deleteMutation = useMutation({
@@ -85,8 +85,12 @@ export function Catalog() {
       } else {
         createMutation.mutate(submitData);
       }
-    } catch (error: any) {
-      setFormError('Error en formato JSON: ' + error.message + '. Revisa si faltan comas o llaves.');
+    } catch (error) {
+      if (error instanceof Error) {
+        setFormError('Error en formato JSON: ' + error.message + '. Revisa si faltan comas o llaves.');
+      } else {
+        setFormError('Ha ocurrido un error desconocido al procesar el JSON.');
+      }
     }
   };
 

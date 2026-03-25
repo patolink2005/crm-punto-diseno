@@ -1,16 +1,20 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { orderService } from '../services/orders';
-import { clientService } from '../services/clients';
 import { pipelineService } from '../services/pipeline';
 import { DndContext, DragOverlay, useDraggable, useDroppable, closestCorners } from '@dnd-kit/core';
-import type { Order, BrandingSettings } from '../types';
+import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
+import type { Order, BrandingSettings, OrderSubmitResponse, OrderItem, OrderStatus } from '../types';
 import { Plus, Eye } from 'lucide-react';
-import { OrderEditorModal, OrderSubmitResponse } from '../components/orders/OrderEditorModal';
+import { OrderEditorModal } from '../components/orders/OrderEditorModal';
 import { OrderDetailModal } from '../components/orders/OrderDetailModal';
 import { useSystemSettings } from '../context/SystemSettingsContext';
-import { supabase } from '../lib/supabase';
 import './Pipeline.css';
+
+// The type returned by the service join
+type OrderWithClient = Order & {
+  clients: { name: string, phone: string } | null;
+};
 
 function formatOrderNumber(order: Order): string {
   if (order.order_number) {
@@ -45,11 +49,9 @@ async function generateAndSendWhatsApp(orderId: string, type: 'new_order' | 'pic
     alert('No se encontró el pedido.');
     return;
   }
-  const { data: client, error } = await supabase.from('clients').select('*').eq('id', order.client_id).single();
-  if (error || !client) {
-    alert('No se encontró el cliente asociado al pedido.');
-    return;
-  }
+
+  // The client should already be on the order object from getById if the join is correct in the service
+  const client = order.clients;
   if (!client) {
     alert('No se encontró el cliente asociado al pedido.');
     return;
@@ -57,10 +59,10 @@ async function generateAndSendWhatsApp(orderId: string, type: 'new_order' | 'pic
 
   let message = '';
   if (type === 'new_order') {
-    const template = (settings?.branding as any)?.whatsapp_new_order_template || `Hola {clientName}, hemos creado tu pedido *{orderNumber}* con el siguiente detalle:\n\n{items}\n\n*Precio Total:* {total}\n*Seña:* {deposit}\n*Saldo:* {balance}\n\n¡Gracias!`;
-    const itemsText = order.items
-      .filter((item: any) => !item.supplier_id)
-      .map((item: any) => `- ${item.description} (${formatCurrency(item.price, order.currency)})`)
+    const template = settings?.branding?.whatsapp_new_order_template || `Hola {clientName}, hemos creado tu pedido *{orderNumber}* con el siguiente detalle:\n\n{items}\n\n*Precio Total:* {total}\n*Seña:* {deposit}\n*Saldo:* {balance}\n\n¡Gracias!`;
+    const itemsText = (order.items || [])
+      .filter((item: OrderItem) => !item.supplier_id)
+      .map((item: OrderItem) => `- ${item.product?.name || 'Producto'} (${formatCurrency(item.calculated_price, order.currency)})`)
       .join('\n');
 
     message = template
@@ -72,14 +74,14 @@ async function generateAndSendWhatsApp(orderId: string, type: 'new_order' | 'pic
       .replace('{balance}', formatCurrency(order.total - order.deposit_amount, order.currency));
 
   } else if (type === 'pickup') {
-    const template = (settings?.branding as any)?.whatsapp_pickup_template || '¡Hola {clientName}! Tu pedido *{orderNumber}* está listo para retirar.';
+    const template = settings?.branding?.whatsapp_pickup_template || '¡Hola {clientName}! Tu pedido *{orderNumber}* está listo para retirar.';
     message = template.replace('{clientName}', client.name).replace('{orderNumber}', formatOrderNumber(order));
   }
 
   sendWhatsAppMessage(client.phone || '', message);
 }
 
-function DraggableCard({ order, onClickDetail }: { order: Order; onClickDetail: (id: string) => void }) {
+function DraggableCard({ order, onClickDetail }: { order: OrderWithClient; onClickDetail: (id: string) => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: order.id,
     data: { order }
@@ -104,9 +106,9 @@ function DraggableCard({ order, onClickDetail }: { order: Order; onClickDetail: 
         </button>
       </div>
       <div {...listeners} {...attributes} style={{ cursor: 'grab' }}>
-        <div className="card-subtitle">{(order as any).clients?.name || 'Cliente Desconocido'}</div>
+        <div className="card-subtitle">{order.clients?.name || 'Cliente Desconocido'}</div>
         <div className="card-footer">
-          <span>{formatCurrency((order as any).total, (order as any).currency)}</span>
+          <span>{formatCurrency(order.total, order.currency)}</span>
           <span>{new Date(order.created_at).toLocaleDateString()}</span>
         </div>
       </div>
@@ -114,7 +116,7 @@ function DraggableCard({ order, onClickDetail }: { order: Order; onClickDetail: 
   );
 }
 
-function DroppableColumn({ id, title, color, orders, onClickDetail }: { id: string, title: string, color: string, orders: Order[], onClickDetail: (id: string) => void }) {
+function DroppableColumn({ id, title, color, orders, onClickDetail }: { id: string, title: string, color: string, orders: OrderWithClient[], onClickDetail: (id: string) => void }) {
   const { setNodeRef, isOver } = useDroppable({ id });
 
   return (
@@ -138,7 +140,7 @@ function DroppableColumn({ id, title, color, orders, onClickDetail }: { id: stri
 export function Pipeline() {
   const queryClient = useQueryClient();
   const { settings } = useSystemSettings();
-  const [activeOrder, setActiveOrder] = useState<Order | null>(null);
+  const [activeOrder, setActiveOrder] = useState<OrderWithClient | null>(null);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -155,7 +157,7 @@ export function Pipeline() {
 
   const filteredOrders = orders?.filter(o =>
     formatOrderNumber(o).toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ((o as any).clients?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+    (o.clients?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleOrderCreation = async (response: OrderSubmitResponse) => {
@@ -166,51 +168,51 @@ export function Pipeline() {
   };
 
   const updateStatusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string, status: string }) => orderService.updateStatus(id, status as any),
+    mutationFn: ({ id, status }: { id: string, status: OrderStatus }) => orderService.updateStatus(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       alert('Error al mover pedido: ' + (err.message || 'Error desconocido'));
       queryClient.invalidateQueries({ queryKey: ['orders'] });
     }
   });
 
-  const handleDragStart = (event: any) => {
+  const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     const order = orders?.find(o => o.id === active.id);
     if (order) setActiveOrder(order);
   };
 
-  const handleDragEnd = (event: any) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveOrder(null);
     if (!over) return;
 
-    const orderId = active.id;
-    const newStatus = over.id as string;
+    const orderId = active.id as string;
+    const newStatus = over.id as OrderStatus;
     const order = orders?.find(o => o.id === orderId);
 
-    if (order && (order as any).status !== newStatus) {
+    if (order && order.status !== newStatus) {
       // Plan C: Security check
-      const isInitialStage = ['nuevo_pedido', 'presupuestado'].includes((order as any).status);
+      const isInitialStage = ['nuevo_pedido', 'presupuestado'].includes(order.status);
       const isMovingForward = !['nuevo_pedido', 'presupuestado'].includes(newStatus);
-      const noDeposit = !(order as any).deposit_amount || (order as any).deposit_amount <= 0;
+      const noDeposit = !order.deposit_amount || order.deposit_amount <= 0;
 
       if (settings?.branding?.enforce_deposit_on_move && isInitialStage && isMovingForward && noDeposit) {
         alert('❌ SEGURIDAD: No se puede mover el pedido a producción/diseño sin registrar una seña previa.');
         return;
       }
 
-      queryClient.setQueryData(['orders'], (oldData: Order[] | undefined) => {
+      queryClient.setQueryData(['orders'], (oldData: OrderWithClient[] | undefined) => {
         if (!oldData) return [];
         return oldData.map(o => o.id === orderId ? { ...o, status: newStatus } : o);
       });
-      updateStatusMutation.mutate({ id: orderId as string, status: newStatus });
+      updateStatusMutation.mutate({ id: orderId, status: newStatus });
 
       // Send WhatsApp when moving to "para_retirar"
       if (newStatus === 'para_retirar') {
-        generateAndSendWhatsApp(orderId as string, 'pickup', settings);
+        generateAndSendWhatsApp(orderId, 'pickup', settings);
       }
     }
   };
@@ -246,7 +248,7 @@ export function Pipeline() {
               id={col.slug}
               title={col.name}
               color={col.color}
-              orders={filteredOrders?.filter(o => (o as any).status === col.slug) || []}
+              orders={filteredOrders?.filter(o => o.status === col.slug) || []}
               onClickDetail={(id) => setDetailOrderId(id)}
             />
           ))}

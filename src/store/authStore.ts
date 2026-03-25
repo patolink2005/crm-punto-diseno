@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 
-interface Profile {
+export interface Profile {
   id: string;
   role: 'admin' | 'emprendedora';
   full_name: string;
