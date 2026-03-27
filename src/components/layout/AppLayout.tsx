@@ -120,7 +120,7 @@ export function AppLayout() {
           }}>
             © {new Date().getFullYear()} PUNTO DISEÑO <br />
             <span style={{ opacity: 0.6 }}>Desarrollado por</span> <br />
-            <strong style={{ color: 'var(--primary-color)' }}>PATOLINK</strong> ®
+            <strong style={{ color: 'var(--primary-color)' }}>PATOLINK2005</strong>
           </div>
         </div>
       </aside>
