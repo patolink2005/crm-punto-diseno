@@ -309,14 +309,20 @@ export function OrderEditorModal({ orderId, onClose, onOrderCreated }: OrderEdit
         payment_method: paymentMethod,
         balance_due: balanceDue
       },
-      items: items.map(it => ({
-        product_config_id: it.product_config_id,
-        selected_attributes: it.selected_attributes,
-        quantity: it.quantity,
-        calculated_price: it.calculated_price,
-        supplier_id: it.supplier_id || undefined, // handle null
-        id: (it.id && !it.id.startsWith('temp_')) ? it.id : undefined
-      }))
+      items: items.map(it => {
+        const itemPayload: Partial<GlobalOrderItem> = {
+          product_config_id: it.product_config_id,
+          selected_attributes: it.selected_attributes,
+          quantity: it.quantity,
+          calculated_price: it.calculated_price,
+          supplier_id: it.supplier_id || undefined,
+        };
+        // Only include ID if it's a real existing ID (not empty, not temp)
+        if (it.id && !it.id.startsWith('temp_')) {
+          itemPayload.id = it.id;
+        }
+        return itemPayload;
+      })
     };
 
     saveMutation.mutate(payload);
