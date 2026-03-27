@@ -4,6 +4,8 @@ import { orderService } from '../../services/orders';
 import { pipelineService } from '../../services/pipeline';
 import { X, FileText, Archive, Package, Edit, Calendar, Trash2, MessageSquare, DollarSign } from 'lucide-react';
 import { OrderEditorModal } from './OrderEditorModal';
+import { useSystemSettings } from '../../context/SystemSettingsContext';
+import { generateAndSendWhatsApp } from '../../services/whatsapp';
 
 interface OrderItemDetail {
   id: string;
@@ -47,6 +49,8 @@ export function OrderDetailModal({ orderId, onClose }: { orderId: string; onClos
     onError: (err: Error) => alert('Error al eliminar pedido: ' + err.message)
   });
 
+  const { settings } = useSystemSettings();
+
   if (isLoading) return (
     <div className="modal-overlay">
       <div className="modal-content glass-panel" style={{ maxWidth: '700px', textAlign: 'center', padding: '3rem' }}>
@@ -58,7 +62,18 @@ export function OrderDetailModal({ orderId, onClose }: { orderId: string; onClos
   if (!order) return null;
 
   if (isEditingOrder) {
-    return <OrderEditorModal orderId={orderId} onClose={() => setIsEditingOrder(false)} />;
+    return (
+      <OrderEditorModal 
+        orderId={orderId} 
+        onClose={() => setIsEditingOrder(false)} 
+        onOrderCreated={async () => {
+          setIsEditingOrder(false);
+          if (confirm("Pedido actualizado con éxito. ¿Deseas enviar la actualización por WhatsApp ahora?")) {
+            await generateAndSendWhatsApp(orderId, 'update', settings);
+          }
+        }}
+      />
+    );
   }
 
   const orderNum = order.order_number ? `#${String(order.order_number).padStart(4, '0')}` : `#${order.id.slice(0, 6)}`;

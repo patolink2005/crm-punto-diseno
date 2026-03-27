@@ -280,7 +280,7 @@ export function OrderEditorModal({ orderId, onClose, onOrderCreated }: OrderEdit
     onSuccess: (data: OrderSubmitResponse) => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['order', orderId] });
-      if (onOrderCreated && !isEdit && data?.order) {
+      if (onOrderCreated && data?.order) {
         // Let Pipeline handle closing (it shows WhatsApp confirm first)
         onOrderCreated(data);
       } else {
