@@ -47,6 +47,10 @@ export function SystemSettingsProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['system-settings'] });
+      alert('¡Plantillas de WhatsApp guardadas exitosamente!');
+    },
+    onError: (error: Error) => {
+      alert('Ocurrió un problema al guardar: ' + error.message);
     }
   });
 

@@ -147,20 +147,27 @@ export function OrderEditorModal({ orderId, onClose, onOrderCreated }: OrderEdit
     selectedProductConfig.price_rules?.forEach(rule => {
       // 1. Base Modifier
       if (rule.type === 'base_modifier' && rule.attribute && itemAttributes[rule.attribute] === rule.value) {
-        priceUYU += Number(rule.price_increase || 0) * itemQuantity;
+        let increaseUYU = Number(rule.price_increase || 0);
+        if (rule.currency === 'USD') increaseUYU *= effectiveExchangeRate;
+        priceUYU += increaseUYU * itemQuantity;
       }
 
       // 2. Area
       if (rule.type === 'area' && rule.width_attr && rule.height_attr) {
         const w = Number(itemAttributes[rule.width_attr] || 0);
         const h = Number(itemAttributes[rule.height_attr] || 0);
-        priceUYU += (((w * h) / 10000) * Number(rule.price_per_m2 || 0)) * itemQuantity;
+        let areaPriceUYU = (((w * h) / 10000) * Number(rule.price_per_m2 || 0));
+        if (rule.currency === 'USD') areaPriceUYU *= effectiveExchangeRate;
+        priceUYU += areaPriceUYU * itemQuantity;
       }
 
       // 3. Custom Cost (third-party cost, no quantity multiplier)
       if (rule.type === 'custom_cost' && rule.attribute && itemAttributes[rule.attribute]) {
-        const extra = Number(itemAttributes[rule.attribute]);
-        if (!isNaN(extra)) priceUYU += extra;
+        let extra = Number(itemAttributes[rule.attribute]);
+        if (!isNaN(extra)) {
+          if (rule.currency === 'USD') extra *= effectiveExchangeRate;
+          priceUYU += extra;
+        }
       }
 
       // 4. Vinyl Nesting (Optimal Roll Selection)

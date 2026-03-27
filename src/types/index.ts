@@ -45,6 +45,7 @@ export interface PriceRule {
   attribute?: string;
   value?: string;
   price_increase?: number;
+  currency?: 'UYU' | 'USD';
   width_attr?: string;
   height_attr?: string;
   price_per_m2?: number;

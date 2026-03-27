@@ -326,6 +326,15 @@ export function Settings() {
             placeholder="Ej: ¡Hola {clientName}! Tu pedido {orderNumber} está listo para retirar."
           />
         </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+          <button
+            className="btn btn-primary"
+            onClick={handleSaveBranding}
+            disabled={isUpdating}
+          >
+            {isUpdating ? 'Guardando...' : 'Guardar Plantillas'}
+          </button>
+        </div>
       </div>
 
       {/* Pipeline Stages */}
