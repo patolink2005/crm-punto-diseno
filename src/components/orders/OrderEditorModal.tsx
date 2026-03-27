@@ -315,7 +315,7 @@ export function OrderEditorModal({ orderId, onClose, onOrderCreated }: OrderEdit
         quantity: it.quantity,
         calculated_price: it.calculated_price,
         supplier_id: it.supplier_id || undefined, // handle null
-        id: it.id?.startsWith('temp_') ? undefined : it.id
+        id: (it.id && !it.id.startsWith('temp_')) ? it.id : undefined
       }))
     };
 
