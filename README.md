@@ -1,73 +1,41 @@
-# React + TypeScript + Vite
+# CRM Punto Diseño
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Sistema de gestión interno para Punto Diseño, optimizado para el flujo de trabajo de cartelería, ploteos y corpóreos.
 
-Currently, two official plugins are available:
+## 🚀 Funcionalidades Principales
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Pipeline de Pedidos:** Gestión visual estilo Kanban de los estados de producción.
+- **Catálogo Inteligente:** Configuración de productos con reglas de precios automatizadas (Área, Nesting de Vinilo, Base).
+- **Notificaciones WhatsApp:** Envío automático de resúmenes de pedido y avisos de retiro con plantillas personalizables.
+- **Gestión de Clientes y Proveedores:** Directorio centralizado con historial de pedidos.
+- **Multimoneda:** Manejo de presupuestos en UYU y USD con integración de tipo de cambio.
 
-## React Compiler
+## 🛠️ Tecnologías
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Frontend:** React + TypeScript + Vite.
+- **Estado y API:** TanStack Query (React Query).
+- **Estilos:** Vanilla CSS (Diseño Premium Dark Mode).
+- **Backend:** Supabase (PostgreSQL + Auth).
+- **Iconos:** Lucide React.
 
-## Expanding the ESLint configuration
+## 📖 Gestión de Catálogo (Novedad)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Ahora puedes configurar tus productos sin escribir código JSON:
+1. Accede a **Gestión de Catálogo**.
+2. Crea un producto y define su **Método de Precio**:
+   - **Auto-Calculado:** Usa fórmulas basadas en atributos (ej: Ancho x Alto).
+   - **Ingreso Manual:** Ideal para trabajos especiales como Corpóreos, donde ingresas el precio directamente al crear el pedido.
+3. Añade **Campos de Personalización** (Atributos) visualmente.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## 🔧 Configuración de Desarrollo
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+```bash
+# Instalar dependencias
+npm install
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Iniciar en local
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+---
+¡Gracias por elegir Punto Diseño!

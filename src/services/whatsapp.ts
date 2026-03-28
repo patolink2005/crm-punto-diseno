@@ -24,7 +24,20 @@ export function sendWhatsAppMessage(phone: string, message: string) {
     alert('No se puede enviar el mensaje porque el cliente no tiene un número de teléfono registrado.');
     return;
   }
-  const whatsappUrl = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+  
+  // Clean non-digit characters
+  let cleanPhone = phone.replace(/\D/g, '');
+  
+  // Standard formatting for Uruguay (598)
+  // If starts with 09... -> 5989...
+  if (cleanPhone.startsWith('09')) {
+    cleanPhone = '598' + cleanPhone.slice(1);
+  } else if (cleanPhone.startsWith('9') && cleanPhone.length === 9) {
+    // If starts with 9... (9 digits) -> 598...
+    cleanPhone = '598' + cleanPhone;
+  }
+
+  const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
   window.open(whatsappUrl, '_blank');
 }
 
@@ -43,12 +56,18 @@ export async function generateAndSendWhatsApp(orderId: string, type: 'new_order'
 
   let message = '';
   if (type === 'new_order' || type === 'update') {
-    const defaultTemplate = `Hola {clientName}, ${type === 'new_order' ? 'hemos creado tu pedido' : 'tu pedido ha sido actualizado'} *{orderNumber}* con el siguiente detalle:\n\n{items}\n\n*Precio Total:* {total}\n*Seña:* {deposit}\n*Saldo:* {balance}\n\n¡Gracias!`;
-    const template = settings?.branding?.whatsapp_new_order_template || defaultTemplate;
+    const statusText = type === 'new_order' ? 'hemos ingresado' : 'hemos actualizado';
+    const defaultTemplate = `\u{00A1}Hola {clientName}! \u{1F4B0}\n\n${statusText} exitosamente tu pedido n\u00FAmero *{orderNumber}* con el siguiente detalle de producci\u00F3n:\n\n\u{1F4E6} Detalle:\n{items}\n\n\u{1F4B5} Se\u00F1a Registrada: {deposit}\n\u{1F4C9} Saldo a Pagar: {balance}\n\n\u00A1Gracias! \u{2728}`;
+    const storedTemplate = settings?.branding?.whatsapp_new_order_template;
+    // If the stored template contains corruption tokens (), fallback to default
+    const template = (!storedTemplate || storedTemplate.includes('\uFFFD')) ? defaultTemplate : storedTemplate;
     
     const itemsText = (order.items || [])
       .filter((item: OrderItem) => !item.supplier_id)
-      .map((item: OrderItem) => `- ${item.product?.name || 'Producto'} (${formatCurrency(item.calculated_price, order.currency)})`)
+      .map((item: OrderItem) => {
+        const pName = item.products_config?.name || item.product?.name || 'Producto';
+        return `- ${pName} (${formatCurrency(item.calculated_price * item.quantity, order.currency)})`;
+      })
       .join('\n');
 
     message = template

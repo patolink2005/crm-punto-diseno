@@ -30,7 +30,7 @@ export interface Client {
 export interface ProductAttribute {
   name: string;
   label: string;
-  type: 'text' | 'number' | 'select';
+  type: 'text' | 'number' | 'select' | 'toggle';
   options?: string[]; // Para tipo select
 }
 

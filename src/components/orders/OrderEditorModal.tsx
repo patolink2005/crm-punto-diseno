@@ -71,6 +71,7 @@ export function OrderEditorModal({ orderId, onClose, onOrderCreated }: OrderEdit
   const [itemAttributes, setItemAttributes] = useState<Record<string, string | number>>({});
   const [itemQuantity, setItemQuantity] = useState(1);
   const [itemSupplierId, setItemSupplierId] = useState('');
+  const [manualItemPrice, setManualItemPrice] = useState<number>(0);
 
   // Queries
   const { data: clients } = useQuery({ queryKey: ['clients'], queryFn: clientService.getAll });
@@ -138,8 +139,8 @@ export function OrderEditorModal({ orderId, onClose, onOrderCreated }: OrderEdit
   const selectedProductConfig = products?.find(p => p.id === selectedProductId);
 
   // Dynamic price calculation logic
-  const { calculatedItemPrice, nestingResult } = useMemo<{ calculatedItemPrice: number; nestingResult: NestingResult | null }>(() => {
-    if (!selectedProductConfig) return { calculatedItemPrice: 0, nestingResult: null };
+  const { calculatedItemPrice, isManual, nestingResult } = useMemo<{ calculatedItemPrice: number; isManual: boolean; nestingResult: NestingResult | null }>(() => {
+    if (!selectedProductConfig) return { calculatedItemPrice: 0, isManual: false, nestingResult: null };
     // Internal calculations are ALWAYS in UYU for consistency
     let priceUYU = selectedProductConfig.base_price * itemQuantity;
     let currentNestingResult: NestingResult | null = null;
@@ -222,13 +223,20 @@ export function OrderEditorModal({ orderId, onClose, onOrderCreated }: OrderEdit
       }
     });
 
-    return { calculatedItemPrice: priceUYU, nestingResult: currentNestingResult };
+    return { 
+      calculatedItemPrice: priceUYU, 
+      isManual: !!selectedProductConfig?.price_rules?.some(r => r.type === 'custom_cost'), 
+      nestingResult: currentNestingResult 
+    };
   }, [selectedProductConfig, itemAttributes, itemQuantity, effectiveExchangeRate]);
 
-  const calculatedDisplayPrice = currency === 'USD' ? (calculatedItemPrice / effectiveExchangeRate) : calculatedItemPrice;
+  const calculatedDisplayPrice = isManual 
+    ? (manualItemPrice * itemQuantity)
+    : (currency === 'USD' ? (calculatedItemPrice / effectiveExchangeRate) : calculatedItemPrice);
 
   const handleAddItem = () => {
     if (!selectedProductConfig) return;
+    const finalPrice = isManual ? (manualItemPrice) : (calculatedDisplayPrice / itemQuantity);
     const supplier = suppliers?.find(s => s.id === itemSupplierId);
 
     const finalAttributes = nestingResult
@@ -237,12 +245,12 @@ export function OrderEditorModal({ orderId, onClose, onOrderCreated }: OrderEdit
 
     setItems([...items, {
       // Properties for DB
-      id: '', // Not known yet
-      order_id: orderId || '', // Not known yet
+      id: '', 
+      order_id: orderId || '',
       product_config_id: selectedProductConfig.id,
       selected_attributes: finalAttributes,
       quantity: itemQuantity,
-      calculated_price: calculatedDisplayPrice / itemQuantity,
+      calculated_price: finalPrice,
       supplier_id: itemSupplierId || undefined,
       created_at: new Date().toISOString(),
       // UI-only properties
@@ -255,6 +263,7 @@ export function OrderEditorModal({ orderId, onClose, onOrderCreated }: OrderEdit
     setItemAttributes({});
     setItemQuantity(1);
     setItemSupplierId('');
+    setManualItemPrice(0);
   };
 
   const handleRemoveItem = (index: number) => {
@@ -434,9 +443,22 @@ export function OrderEditorModal({ orderId, onClose, onOrderCreated }: OrderEdit
                 )}
 
                 {selectedProductConfig && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ fontWeight: 600 }}>Costo {itemQuantity > 1 ? 'Total' : 'Ítem'}: {currency === 'USD' ? 'U$S' : '$'}{calculatedDisplayPrice.toLocaleString('es-UY', { minimumFractionDigits: 2 })}</div>
-                    <button type="button" className="btn btn-primary btn-sm" onClick={handleAddItem}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    {isManual ? (
+                      <div className="form-group" style={{ marginBottom: 0, width: '200px' }}>
+                        <label className="form-label text-xs">Precio Unitario ({currency === 'USD' ? 'U$S' : '$'})</label>
+                        <input 
+                          type="number" 
+                          className="input-base input-sm" 
+                          value={manualItemPrice} 
+                          onChange={e => setManualItemPrice(Number(e.target.value))} 
+                          autoFocus
+                        />
+                      </div>
+                    ) : (
+                      <div style={{ fontWeight: 600 }}>Costo {itemQuantity > 1 ? 'Total' : 'Ítem'}: {currency === 'USD' ? 'U$S' : '$'}{calculatedDisplayPrice.toLocaleString('es-UY', { minimumFractionDigits: 2 })}</div>
+                    )}
+                    <button type="button" className="btn btn-primary btn-sm" onClick={handleAddItem} disabled={isManual && manualItemPrice <= 0}>
                       <Plus size={14} /> Añadir Ítem
                     </button>
                   </div>
