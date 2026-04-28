@@ -36,9 +36,9 @@ serve(async (req) => {
         }
       ],
       back_urls: {
-        success: `${appUrl}/portal/pedidos/${orderId}?payment=success`,
-        failure: `${appUrl}/portal/pedidos/${orderId}?payment=failure`,
-        pending: `${appUrl}/portal/pedidos/${orderId}?payment=pending`
+        success: `${appUrl}/portal?payment=success&order_id=${orderId}`,
+        failure: `${appUrl}/portal?payment=failure&order_id=${orderId}`,
+        pending: `${appUrl}/portal?payment=pending&order_id=${orderId}`
       },
       auto_return: 'approved',
       external_reference: orderId.toString(),
