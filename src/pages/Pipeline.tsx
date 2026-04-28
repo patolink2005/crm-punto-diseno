@@ -5,7 +5,7 @@ import { pipelineService } from '../services/pipeline';
 import { DndContext, DragOverlay, useDraggable, useDroppable, closestCorners } from '@dnd-kit/core';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 import type { Order, OrderSubmitResponse, OrderStatus } from '../types';
-import { Plus, Eye } from 'lucide-react';
+import { Plus, Eye, ChevronDown, ChevronRight } from 'lucide-react';
 import { OrderEditorModal } from '../components/orders/OrderEditorModal';
 import { OrderDetailModal } from '../components/orders/OrderDetailModal';
 import { useSystemSettings } from '../context/SystemSettingsContext';
@@ -53,23 +53,34 @@ function DraggableCard({ order, onClickDetail }: { order: OrderWithClient; onCli
   );
 }
 
-function DroppableColumn({ id, title, color, orders, onClickDetail }: { id: string, title: string, color: string, orders: OrderWithClient[], onClickDetail: (id: string) => void }) {
+function DroppableRow({ id, title, color, orders, onClickDetail }: { id: string, title: string, color: string, orders: OrderWithClient[], onClickDetail: (id: string) => void }) {
   const { setNodeRef, isOver } = useDroppable({ id });
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
-    <div className="kanban-column" ref={setNodeRef} style={{ borderColor: isOver ? color : undefined }}>
-      <div className="kanban-column-header">
-        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+    <div className="pipeline-row" ref={setNodeRef} style={{ borderColor: isOver ? color : undefined }}>
+      <div 
+        className="pipeline-row-header" 
+        onClick={() => setIsCollapsed(!isCollapsed)}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color }} />
           {title}
-        </span>
-        <span className="badge-role" style={{ background: 'rgba(255,255,255,0.1)' }}>{orders.length}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <span className="badge-role" style={{ background: 'rgba(255,255,255,0.1)' }}>{orders.length}</span>
+          <button style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+            {isCollapsed ? <ChevronRight size={18} /> : <ChevronDown size={18} />}
+          </button>
+        </div>
       </div>
-      <div className="kanban-column-content">
-        {orders.map(order => (
-          <DraggableCard key={order.id} order={order} onClickDetail={onClickDetail} />
-        ))}
-      </div>
+      {!isCollapsed && (
+        <div className="pipeline-row-content">
+          {orders.map(order => (
+            <DraggableCard key={order.id} order={order} onClickDetail={onClickDetail} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -180,9 +191,9 @@ export function Pipeline() {
       </div>
 
       <DndContext collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="kanban-board">
+        <div className="pipeline-board">
           {columns.map(col => (
-            <DroppableColumn
+            <DroppableRow
               key={col.slug}
               id={col.slug}
               title={col.name}

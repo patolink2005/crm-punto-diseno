@@ -64,23 +64,33 @@ export function PortalDashboard() {
         body: {
           orderId: order.id,
           amount: order.balance_due,
-          title: `Pago Saldo Pedido #${order.order_number}`
+          title: `Pago Saldo Pedido #${order.order_number}`,
+          currency: order.currency || 'UYU',
+          // En producción se usará este email para el payer.
+          // En sandbox, la función lo reemplaza por el email de la cuenta TEST COMPRADORA.
+          buyer_email: clientProfile?.email || 'cliente@crmpunto.com'
         }
       });
       
       if (error) throw error;
       
-      // En producción usarías data.init_point, pero puedes usar sandbox_init_point para pruebas
-      if (data.sandbox_init_point) {
-        window.location.href = data.sandbox_init_point; 
-      } else if (data.init_point) {
-        window.location.href = data.init_point;
+      // La Edge Function nos indica si está en modo sandbox.
+      // En sandbox usamos sandbox_init_point; en producción, init_point.
+      const redirectUrl = data.isSandbox
+        ? (data.sandbox_init_point || data.init_point)
+        : (data.init_point || data.sandbox_init_point);
+
+      if (redirectUrl) {
+        window.location.href = redirectUrl;
+      } else {
+        throw new Error('No se recibió URL de pago desde Mercado Pago.');
       }
     } catch (error) {
       console.error('Error al generar pago:', error);
       alert('Error al generar el pago. Por favor intenta de nuevo más tarde.');
     }
   };
+
 
   return (
     <div className="portal-dashboard">

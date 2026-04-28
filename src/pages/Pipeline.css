@@ -1,13 +1,11 @@
-.kanban-board {
+.pipeline-board {
   display: flex;
+  flex-direction: column;
   gap: 1.5rem;
-  overflow-x: auto;
   padding-bottom: 1rem;
-  height: calc(100vh - 150px);
 }
 
-.kanban-column {
-  flex: 0 0 320px;
+.pipeline-row {
   background-color: rgba(30, 41, 59, 0.4);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -15,7 +13,7 @@
   flex-direction: column;
 }
 
-.kanban-column-header {
+.pipeline-row-header {
   padding: 1rem;
   border-bottom: 1px solid var(--color-border);
   display: flex;
@@ -24,18 +22,25 @@
   font-weight: 600;
   background-color: rgba(15, 23, 42, 0.5);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  user-select: none;
 }
 
-.kanban-column-content {
-  flex: 1;
+.pipeline-row-header:hover {
+  background-color: rgba(30, 41, 59, 0.8);
+}
+
+.pipeline-row-content {
   padding: 1rem;
-  overflow-y: auto;
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 1rem;
 }
 
 .kanban-card {
+  width: 320px;
+  flex-grow: 0;
   background-color: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -91,12 +96,11 @@
 }
 
 @media (max-width: 768px) {
-  .kanban-board {
+  .pipeline-board {
     height: auto;
-    flex-direction: column;
     gap: 1rem;
   }
-  .kanban-column {
-    flex: 0 0 auto;
+  .kanban-card {
+    width: 100%;
   }
 }
