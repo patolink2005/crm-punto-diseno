@@ -57,16 +57,23 @@ export async function generateAndSendWhatsApp(orderId: string, type: 'new_order'
   let message = '';
   if (type === 'new_order' || type === 'update') {
     const statusText = type === 'new_order' ? 'hemos ingresado' : 'hemos actualizado';
-    const defaultTemplate = `\u{00A1}Hola {clientName}! \u{1F4B0}\n\n${statusText} exitosamente tu pedido n\u00FAmero *{orderNumber}* con el siguiente detalle de producci\u00F3n:\n\n\u{1F4E6} Detalle:\n{items}\n\n\u{1F4B5} Se\u00F1a Registrada: {deposit}\n\u{1F4C9} Saldo a Pagar: {balance}\n\n\u00A1Gracias! \u{2728}`;
+    const defaultTemplate = `¡Hola {clientName}! 💰\n\n${statusText} exitosamente tu pedido número *{orderNumber}* con el siguiente detalle de producción:\n\n📦 Detalle:\n{items}\n\n💵 Seña Registrada: {deposit}\n📉 Saldo a Pagar: {balance}\n\n¡Gracias! ✨`;
     const storedTemplate = settings?.branding?.whatsapp_new_order_template;
     // If the stored template contains corruption tokens (), fallback to default
     const template = (!storedTemplate || storedTemplate.includes('\uFFFD')) ? defaultTemplate : storedTemplate;
     
     const itemsText = (order.items || [])
-      .filter((item: OrderItem) => !item.supplier_id)
       .map((item: OrderItem) => {
         const pName = item.products_config?.name || item.product?.name || 'Producto';
-        return `- ${pName} (${formatCurrency(item.calculated_price * item.quantity, order.currency)})`;
+        let detailStr = `- x${item.quantity} ${pName} (${formatCurrency(item.calculated_price * item.quantity, order.currency)})`;
+        if (item.selected_attributes) {
+           const attrEntries = Object.entries(item.selected_attributes);
+           if (attrEntries.length > 0) {
+               const attrLines = attrEntries.map(([k, v]) => `  ${k}: ${v}`).join('\n');
+               detailStr += `\n${attrLines}`;
+           }
+        }
+        return detailStr;
       })
       .join('\n');
 
