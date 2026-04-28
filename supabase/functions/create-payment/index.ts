@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -63,8 +64,7 @@ serve(async (req) => {
       auto_return: 'approved',
       external_reference: orderId.toString(),
       statement_descriptor: 'CRMPunto', // Aparece en el resumen de la tarjeta (max 13 chars)
-      // Activar cuando tengas la URL del proyecto Supabase configurada:
-      // notification_url: `https://[SUPABASE_PROJECT_REF].supabase.co/functions/v1/mp-webhook`
+      notification_url: `https://slbohshctjwjldnvevnh.supabase.co/functions/v1/mp-webhook`
     }
 
     console.log(`Creating MP preference | order: ${orderId} | amount: ${amount} | currency: ${currency || 'UYU'} | sandbox: ${isSandbox} | payerEmail: ${payerEmail}`)
@@ -86,6 +86,17 @@ serve(async (req) => {
     }
 
     console.log(`MP preference created: ${mpData.id} | has sandbox_init_point: ${!!mpData.sandbox_init_point}`)
+
+    // Actualizar el estado del pago a 'pending' en nuestra base de datos
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    if (supabaseUrl && supabaseServiceKey) {
+      const supabase = createClient(supabaseUrl, supabaseServiceKey)
+      await supabase
+        .from('orders')
+        .update({ payment_status: 'pending' })
+        .eq('id', orderId)
+    }
 
     return new Response(
       JSON.stringify({ 

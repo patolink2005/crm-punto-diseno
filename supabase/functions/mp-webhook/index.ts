@@ -41,7 +41,7 @@ serve(async (req) => {
       const orderId = paymentInfo.external_reference
       const status = paymentInfo.status // 'approved', 'pending', 'rejected', etc.
 
-      if (orderId && status === 'approved') {
+      if (orderId) {
         // Inicializar Supabase Admin Client para evitar RLS
         const supabaseUrl = Deno.env.get('SUPABASE_URL')
         const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -49,17 +49,49 @@ serve(async (req) => {
         if (supabaseUrl && supabaseServiceKey) {
           const supabase = createClient(supabaseUrl, supabaseServiceKey)
           
-          // Actualizar la orden en la BD (marcar como pagada)
-          // Dependiendo del esquema de DB, puede ser un status o un payment_status
-          // Aquí asumimos que la tabla es orders y el campo payment_status
-          await supabase
-            .from('orders')
-            .update({ 
-              payment_status: 'paid',
-              payment_id: paymentId.toString(),
-              status: 'en_proceso' // Opcional: mover el estado del pedido automáticamente
-            })
-            .eq('id', orderId)
+          if (status === 'approved') {
+            // 1. Consultar el estado actual de la orden para el cálculo del depósito
+            const { data: orderData, error: fetchError } = await supabase
+              .from('orders')
+              .select('total, deposit_amount')
+              .eq('id', orderId)
+              .single()
+
+            if (fetchError) {
+              console.error('Error fetching order:', fetchError)
+            } else if (orderData) {
+              const amountPaid = paymentInfo.transaction_amount || 0
+              const currentDeposit = orderData.deposit_amount || 0
+              const newDeposit = currentDeposit + amountPaid
+              const newBalanceDue = Math.max(0, orderData.total - newDeposit)
+
+              console.log(`Updating order ${orderId} (APPROVED): newDeposit=${newDeposit}, newBalance=${newBalanceDue}`)
+
+              const { error: updateError } = await supabase
+                .from('orders')
+                .update({ 
+                  deposit_amount: newDeposit,
+                  balance_due: newBalanceDue,
+                  payment_status: 'approved',
+                  payment_method: paymentInfo.payment_type_id || 'mercadopago'
+                })
+                .eq('id', orderId)
+                
+              if (updateError) console.error('Error updating order:', updateError)
+            }
+          } else if (status === 'rejected' || status === 'cancelled') {
+            console.log(`Updating order ${orderId} (REJECTED/CANCELLED): status=${status}`)
+            await supabase
+              .from('orders')
+              .update({ payment_status: 'rejected' })
+              .eq('id', orderId)
+          } else if (status === 'in_process' || status === 'pending') {
+            console.log(`Updating order ${orderId} (PENDING): status=${status}`)
+            await supabase
+              .from('orders')
+              .update({ payment_status: 'pending' })
+              .eq('id', orderId)
+          }
         }
       }
     }
