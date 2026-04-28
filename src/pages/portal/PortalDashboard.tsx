@@ -59,12 +59,12 @@ export function PortalDashboard() {
         fetchSpecificOrder();
       }
 
-      if (paymentStatus === 'failure') {
-        setVerificationStatus('error');
-      } else if (paymentStatus === 'pending') {
-        setVerificationStatus('timeout');
-      } else {
-        setVerificationStatus('verifying');
+      if (verificationStatus === 'verifying') {
+        if (paymentStatus === 'failure') {
+          setVerificationStatus('error');
+        } else if (paymentStatus === 'pending') {
+          setVerificationStatus('timeout');
+        }
       }
 
       let attempts = 0;
@@ -112,7 +112,8 @@ export function PortalDashboard() {
 
       return () => clearInterval(pollInterval);
     }
-  }, [paymentStatus, orderId, refetch, targetOrder]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentStatus, orderId, refetch]);
 
   useEffect(() => {
     // Si hay parámetros de pago pero el modal está cerrado, limpiar la URL después de un tiempo
