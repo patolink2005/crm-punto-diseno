@@ -1,11 +1,28 @@
 import { useAuthStore } from '../../store/authStore';
-import { Package, Clock, CheckCircle, CreditCard, ChevronRight } from 'lucide-react';
+import { Package, Clock, CheckCircle, CreditCard, ChevronRight, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import type { Order } from '../../types';
+import { useSearchParams } from 'react-router-dom';
+import { useEffect } from 'react';
 
 export function PortalDashboard() {
   const { clientProfile } = useAuthStore();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const paymentStatus = searchParams.get('payment');
+  const orderId = searchParams.get('order_id');
+
+  useEffect(() => {
+    if (paymentStatus) {
+      // Remover los query params de la URL después de 5 segundos para que el mensaje no quede ahí para siempre
+      const timer = setTimeout(() => {
+        searchParams.delete('payment');
+        searchParams.delete('order_id');
+        setSearchParams(searchParams);
+      }, 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [paymentStatus, searchParams, setSearchParams]);
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ['portal-orders', clientProfile?.id],
@@ -71,6 +88,27 @@ export function PortalDashboard() {
         <h1>Hola, {clientProfile?.name || 'Cliente'}</h1>
         <p>Aquí puedes ver el estado de tus pedidos y realizar pagos.</p>
       </div>
+
+      {paymentStatus && (
+        <div className={`p-4 rounded-md mb-6 flex items-start gap-3 ${
+          paymentStatus === 'success' ? 'bg-green-100 text-green-800 border border-green-200' :
+          paymentStatus === 'failure' ? 'bg-red-100 text-red-800 border border-red-200' :
+          'bg-yellow-100 text-yellow-800 border border-yellow-200'
+        }`}>
+          {paymentStatus === 'success' ? <CheckCircle size={24} /> : <AlertCircle size={24} />}
+          <div>
+            <h3 className="font-bold">
+              {paymentStatus === 'success' ? 'Pago Exitoso' : 
+               paymentStatus === 'failure' ? 'Error en el Pago' : 'Pago Pendiente'}
+            </h3>
+            <p className="text-sm">
+              {paymentStatus === 'success' ? `El pago del pedido #${orderId || ''} se procesó correctamente.` : 
+               paymentStatus === 'failure' ? `Hubo un problema al procesar el pago del pedido #${orderId || ''}.` : 
+               `El pago del pedido #${orderId || ''} está pendiente de confirmación.`}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Stats Summary */}
       <div className="stats-grid">
