@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet, useLocation, Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { useSystemSettings } from '../../context/SystemSettingsContext';
-import { LogOut, LayoutDashboard, Users, UserPlus, Package, ShoppingCart, FileText, Truck, Menu, X, Settings, History as HistoryIcon, BarChart } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, Package, ShoppingCart, FileText, Truck, Menu, X, Settings, History as HistoryIcon, BarChart } from 'lucide-react';
 import './AppLayout.css';
 
 export function AppLayout() {
@@ -28,7 +28,7 @@ export function AppLayout() {
     { path: '/reports', label: 'Reportes', icon: <BarChart size={18} />, show: profile?.role === 'admin' },
     { path: '/catalog', label: 'Catálogo', icon: <Package size={18} />, show: profile?.role === 'admin' },
     { path: '/suppliers', label: 'Proveedores', icon: <Truck size={18} />, show: profile?.role === 'admin' },
-    { path: '/users', label: 'Equipo', icon: <UserPlus size={18} />, show: profile?.role === 'admin' },
+    { path: '/users', label: 'Cuentas de Usuarios', icon: <Users size={18} />, show: profile?.role === 'admin' },
     { path: '/invoices', label: 'Facturación', icon: <FileText size={18} />, show: true },
     { path: '/settings', label: 'Configuración', icon: <Settings size={18} />, show: profile?.role === 'admin' },
   ];
