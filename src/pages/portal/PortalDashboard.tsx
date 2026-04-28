@@ -66,103 +66,141 @@ export function PortalDashboard() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-text">Hola, {clientProfile?.name || 'Cliente'}</h1>
-          <p className="text-text-muted mt-1">Aquí puedes ver el estado de tus pedidos y realizar pagos.</p>
-        </div>
+    <div className="portal-dashboard">
+      <div className="portal-welcome">
+        <h1>Hola, {clientProfile?.name || 'Cliente'}</h1>
+        <p>Aquí puedes ver el estado de tus pedidos y realizar pagos.</p>
       </div>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-surface-card border border-border p-5 rounded-xl">
-          <div className="flex items-center gap-3 text-text-muted mb-2">
-            <Package size={20} />
-            <span className="font-medium">Total Pedidos</span>
+      <div className="stats-grid">
+        <div className="stat-card glass-panel" style={{ '--stat-color': 'var(--primary-color)' } as React.CSSProperties}>
+          <div className="stat-header">
+            <div className="stat-icon-wrapper">
+              <Package size={20} />
+            </div>
+            <span>Total Pedidos</span>
           </div>
-          <p className="text-3xl font-bold text-text">{orders?.length || 0}</p>
+          <p className="stat-value">{orders?.length || 0}</p>
         </div>
-        <div className="bg-surface-card border border-border p-5 rounded-xl">
-          <div className="flex items-center gap-3 text-warning mb-2">
-            <Clock size={20} />
-            <span className="font-medium">En Proceso</span>
+        
+        <div className="stat-card glass-panel" style={{ '--stat-color': 'var(--warning-color)' } as React.CSSProperties}>
+          <div className="stat-header">
+            <div className="stat-icon-wrapper">
+              <Clock size={20} />
+            </div>
+            <span>En Proceso</span>
           </div>
-          <p className="text-3xl font-bold text-text">{activeOrders.length}</p>
+          <p className="stat-value">{activeOrders.length}</p>
         </div>
-        <div className="bg-surface-card border border-border p-5 rounded-xl">
-          <div className="flex items-center gap-3 text-success mb-2">
-            <CheckCircle size={20} />
-            <span className="font-medium">Para Retirar</span>
+        
+        <div className="stat-card glass-panel" style={{ '--stat-color': 'var(--success-color)' } as React.CSSProperties}>
+          <div className="stat-header">
+            <div className="stat-icon-wrapper">
+              <CheckCircle size={20} />
+            </div>
+            <span>Para Retirar</span>
           </div>
-          <p className="text-3xl font-bold text-text">{pickupOrders.length}</p>
+          <p className="stat-value">{pickupOrders.length}</p>
         </div>
-        <div className="bg-surface-card border border-border p-5 rounded-xl">
-          <div className="flex items-center gap-3 text-danger mb-2">
-            <CreditCard size={20} />
-            <span className="font-medium">Saldo Pendiente</span>
+        
+        <div className="stat-card glass-panel" style={{ '--stat-color': 'var(--danger-color)' } as React.CSSProperties}>
+          <div className="stat-header">
+            <div className="stat-icon-wrapper">
+              <CreditCard size={20} />
+            </div>
+            <span>Saldo Pendiente</span>
           </div>
-          <p className="text-3xl font-bold text-text">${totalBalanceDue.toFixed(2)}</p>
+          <p className="stat-value">${totalBalanceDue.toFixed(2)}</p>
         </div>
       </div>
 
       {/* Orders List */}
-      <div className="bg-surface-card border border-border rounded-xl p-6">
-        <h2 className="text-xl font-bold text-text mb-4">Tus Pedidos</h2>
+      <div className="orders-section glass-panel">
+        <h2 className="orders-section-title">
+          <Package size={24} className="text-primary" />
+          Tus Pedidos
+        </h2>
         
         {isLoading ? (
-          <div className="text-center py-12 text-text-muted">Cargando pedidos...</div>
+          <div className="empty-state">
+            <div className="loader"></div>
+            <p>Cargando pedidos...</p>
+          </div>
         ) : orders && orders.length > 0 ? (
-          <div className="space-y-4">
-            {orders.map((order) => (
-              <div key={order.id} className="border border-border rounded-lg p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-bold text-lg text-text">#{order.order_number}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      order.status === 'para_retirar' ? 'bg-success/10 text-success' :
-                      ['entregado', 'facturado'].includes(order.status) ? 'bg-text-muted/10 text-text-muted' :
-                      'bg-warning/10 text-warning'
-                    }`}>
-                      {order.status.replace('_', ' ').toUpperCase()}
-                    </span>
-                  </div>
-                  <p className="text-sm text-text-muted">
-                    {new Date(order.created_at).toLocaleDateString('es-AR')}
-                  </p>
-                  <div className="mt-2 text-sm text-text">
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    {order.items?.map((item: any) => (
-                      <div key={item.id}>• {item.quantity}x {item.product?.name || 'Producto'}</div>
-                    ))}
-                  </div>
-                </div>
-                
-                <div className="flex flex-col items-end gap-2">
-                  <div className="text-right">
-                    <div className="text-sm text-text-muted">Total: ${order.total.toFixed(2)}</div>
-                    {order.balance_due > 0 && (
-                      <div className="font-medium text-danger">Resta: ${order.balance_due.toFixed(2)}</div>
-                    )}
-                  </div>
-                  
-                  {order.balance_due > 0 && order.status !== 'entregado' && (
-                    <button 
-                      onClick={() => handlePayClick(order)}
-                      className="btn btn-primary text-sm px-4 py-2 flex items-center gap-2"
-                    >
-                      Pagar Saldo
-                      <ChevronRight size={16} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
+          <div className="table-responsive">
+            <table className="portal-table">
+              <thead>
+                <tr>
+                  <th>Pedido</th>
+                  <th>Fecha</th>
+                  <th>Detalle</th>
+                  <th>Total</th>
+                  <th>Saldo Pendiente</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((order) => (
+                  <tr key={order.id}>
+                    <td>
+                      <div className="order-number-cell">
+                        <span className="order-number">#{order.order_number}</span>
+                        <span className={`badge-status ${
+                          order.status === 'para_retirar' ? 'para-retirar' :
+                          ['entregado', 'facturado'].includes(order.status) ? 'entregado' :
+                          'default'
+                        }`}>
+                          {order.status.replace('_', ' ')}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="order-date-cell">
+                      {new Date(order.created_at).toLocaleDateString('es-AR')}
+                    </td>
+                    <td>
+                      <div className="order-items-cell">
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                        {order.items?.map((item: any) => (
+                          <div key={item.id} className="order-item-row">
+                            {item.quantity}x {item.product?.name || 'Producto'}
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="order-total-cell">
+                      ${order.total.toFixed(2)}
+                    </td>
+                    <td className="order-balance-cell">
+                      {order.balance_due > 0 ? (
+                        <span className="balance-amount text-danger font-bold">${order.balance_due.toFixed(2)}</span>
+                      ) : (
+                        <span className="text-success font-medium">Pagado</span>
+                      )}
+                    </td>
+                    <td className="order-action-cell">
+                      {order.balance_due > 0 && order.status !== 'entregado' && (
+                        <button 
+                          onClick={() => handlePayClick(order)}
+                          className="btn btn-primary btn-sm pay-btn"
+                        >
+                          Pagar Saldo
+                          <ChevronRight size={16} />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : (
-          <div className="text-center py-12">
-            <Package size={48} className="mx-auto text-border mb-4" />
-            <p className="text-text-muted">Aún no tienes pedidos registrados.</p>
+          <div className="empty-state">
+            <div className="empty-state-icon">
+              <Package size={48} />
+            </div>
+            <h3>Sin pedidos activos</h3>
+            <p>Aún no tienes pedidos registrados en tu cuenta.</p>
           </div>
         )}
       </div>

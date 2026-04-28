@@ -2,6 +2,7 @@
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { LogOut, Package } from 'lucide-react';
+import '../../pages/portal/Portal.css'; // Import newly created CSS
 
 export function PortalLayout() {
   const { signOut, clientProfile } = useAuthStore();
@@ -13,21 +14,24 @@ export function PortalLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
+    <div className="portal-layout">
       {/* Top Navbar */}
-      <header className="bg-surface-card border-b border-border h-16 flex items-center justify-between px-6 sticky top-0 z-10">
-        <div className="flex items-center gap-2 text-primary font-bold text-xl">
-          <Package size={24} />
+      <header className="portal-header">
+        <div className="portal-brand">
+          <div className="portal-brand-icon">
+            <Package size={24} />
+          </div>
           <span>Portal de Clientes</span>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex flex-col items-end">
-            <span className="text-sm font-medium text-text">{clientProfile?.name || 'Cliente'}</span>
-            <span className="text-xs text-text-muted">{clientProfile?.email}</span>
+        
+        <div className="portal-header-actions">
+          <div className="portal-user-info">
+            <span className="portal-user-name">{clientProfile?.name || 'Cliente'}</span>
+            <span className="portal-user-email">{clientProfile?.email}</span>
           </div>
           <button
             onClick={handleSignOut}
-            className="p-2 text-text-muted hover:text-danger hover:bg-danger-bg rounded-lg transition-colors"
+            className="btn-icon-danger"
             title="Cerrar sesión"
           >
             <LogOut size={20} />
@@ -36,7 +40,7 @@ export function PortalLayout() {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
+      <main className="portal-main">
         <Outlet />
       </main>
     </div>
