@@ -1,9 +1,8 @@
-import React from 'react';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore } from '../../store/authStore';
 import { Package, Clock, CheckCircle, CreditCard, ChevronRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../lib/supabase';
-import type { Order } from '../types';
+import { supabase } from '../../lib/supabase';
+import type { Order } from '../../types';
 
 export function PortalDashboard() {
   const { clientProfile } = useAuthStore();
@@ -132,7 +131,8 @@ export function PortalDashboard() {
                     {new Date(order.created_at).toLocaleDateString('es-AR')}
                   </p>
                   <div className="mt-2 text-sm text-text">
-                    {order.items?.map(item => (
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {order.items?.map((item: any) => (
                       <div key={item.id}>• {item.quantity}x {item.product?.name || 'Producto'}</div>
                     ))}
                   </div>
