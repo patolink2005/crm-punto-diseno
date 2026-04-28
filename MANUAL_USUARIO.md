@@ -4,7 +4,22 @@ Bienvenido a tu nueva plataforma de gestión para **Punto Diseño**. Este sistem
 
 ---
 
-## 🏗️ 1. Panel de Control (Dashboard)
+## 🔐 1. Acceso al Sistema (Autenticación)
+
+Para garantizar la seguridad de los datos de tus clientes, el sistema cuenta con controles de acceso estrictos:
+
+1. **Métodos de Ingreso:** 
+   - Puedes acceder usando un **Email y Contraseña** tradicional.
+   - O puedes hacer clic en **"Continuar con Google"** para un acceso más rápido y seguro.
+2. **Aprobación de Cuenta:** 
+   - Por motivos de seguridad, **todas las cuentas nuevas (incluso si entras con Google) requieren ser aprobadas por un Administrador** antes de poder acceder a la información.
+   - Si es tu primera vez, verás una pantalla de "Cuenta Pendiente". Avisa al administrador para que te active.
+3. **Autenticación de 2 Pasos (2FA):** 
+   - Si tu cuenta requiere doble seguridad, el sistema te pedirá escanear un código QR con una app como *Google Authenticator* o *Authy* en tu primer inicio de sesión.
+
+---
+
+## 🏗️ 2. Panel de Control (Dashboard)
 Al ingresar, verás un resumen visual de la salud de tu negocio:
 - **Balance Total:** Lo facturado acumulado.
 - **Pedidos Activos:** Cuántos trabajos están en curso.
@@ -13,14 +28,14 @@ Al ingresar, verás un resumen visual de la salud de tu negocio:
 
 ---
 
-## 👥 2. Gestión de Clientes
+## 👥 3. Gestión de Clientes
 Desde el menú lateral puedes acceder a **Clientes**:
 - **Añadir Cliente:** Registra nombre, email y teléfono (importante para WhatsApp).
 - **Ficha del Cliente:** Visualiza sus datos y el historial de pedidos que ha realizado contigo.
 
 ---
 
-## 📦 3. Pipeline de Pedidos (El Corazón del CRM)
+## 📦 4. Pipeline de Pedidos (El Corazón del CRM)
 La sección **Pedidos** funciona como un tablero visual (estilo Kanban).
 
 ### Estados de Producción:
@@ -35,7 +50,7 @@ Puedes mover una "tarjeta" de pedido arrastrándola o cambiándola de columna:
 
 ---
 
-## 📝 4. Crear y Editar Pedidos
+## 📝 5. Crear y Editar Pedidos
 Al crear un pedido:
 1.  **Selecciona un Cliente.**
 2.  **Añade Ítems:** Elige un producto de tu catálogo.
@@ -45,7 +60,7 @@ Al crear un pedido:
 
 ---
 
-## 📱 5. Notificaciones de WhatsApp
+## 📱 6. Notificaciones de WhatsApp
 Dentro de un pedido, tienes botones mágicos para comunicarte:
 - **Enviar Resumen:** Manda un detalle profesional de los productos, la seña y el saldo por cobrar.
 - **Aviso de Retiro:** Notifica al cliente que su pedido está listo en el local.
@@ -53,7 +68,7 @@ Dentro de un pedido, tienes botones mágicos para comunicarte:
 
 ---
 
-## 📚 6. Gestión de Catálogo (Configuración Avanzada)
+## 📚 7. Gestión de Catálogo (Configuración Avanzada)
 Aquí configuras "qué vendes" y "cómo se cobra":
 - **Crear Producto:** Define el nombre y la descripción.
 - **Método de Precio:** 
@@ -63,7 +78,7 @@ Aquí configuras "qué vendes" y "cómo se cobra":
 
 ---
 
-## ⚙️ 7. Configuración y Marca
+## ⚙️ 8. Configuración y Marca
 Personaliza tu herramienta:
 - **Marca:** Sube tu logo y cambia los colores del CRM.
 - **Plantillas de WhatsApp:** Edita los textos automáticos usando etiquetas especiales como `{{client_name}}` o `{{order_number}}`.
