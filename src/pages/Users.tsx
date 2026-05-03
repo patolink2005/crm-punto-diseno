@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-import { Shield, ShieldAlert, UserCog, UserPlus, X, Info, Lock, Unlock, CheckCircle, Ban, Users as UsersIcon } from 'lucide-react';
+import { UserPlus, X, Lock, Unlock, CheckCircle, Ban, Mail, Fingerprint, ShieldCheck, ShieldHalf } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
-import './Clients.css';
 
 interface UserAccount {
   authId: string;
@@ -25,14 +24,12 @@ export function Users() {
   const { data: users, isLoading } = useQuery({
     queryKey: ['user-accounts'],
     queryFn: async () => {
-      // 1. Fetch all profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('*');
       
       if (profilesError) throw profilesError;
 
-      // 2. Fetch all clients that are linked to an auth user
       const { data: clients, error: clientsError } = await supabase
         .from('clients')
         .select('*')
@@ -42,12 +39,11 @@ export function Users() {
 
       const userMap = new Map<string, UserAccount>();
 
-      // Merge profiles
       profiles?.forEach(p => {
         userMap.set(p.id, {
           authId: p.id,
           fullName: p.full_name || 'Sin Nombre',
-          email: null, // We might not have email in profiles, but we will try to get it from clients if exists
+          email: null,
           role: p.role as 'admin' | 'emprendedora',
           isActive: p.is_active,
           mfaEnabled: p.mfa_enabled,
@@ -56,7 +52,6 @@ export function Users() {
         });
       });
 
-      // Merge clients
       clients?.forEach(c => {
         if (!c.user_id) return;
         
@@ -85,7 +80,6 @@ export function Users() {
   const updateRoleMutation = useMutation({
     mutationFn: async ({ user, newRole }: { user: UserAccount, newRole: 'admin' | 'emprendedora' | 'cliente' }) => {
       if (newRole === 'cliente') {
-        // If changing TO cliente, we remove them from profiles
         if (user.profileId) {
           const { error: deleteError } = await supabase
             .from('profiles')
@@ -94,7 +88,6 @@ export function Users() {
           if (deleteError) throw deleteError;
         }
         
-        // If they don't have a client record, create one
         if (!user.clientId) {
           const { error: insertClientError } = await supabase
             .from('clients')
@@ -107,8 +100,6 @@ export function Users() {
           if (insertClientError) throw insertClientError;
         }
       } else {
-        // Changing TO admin or emprendedora
-        // We upsert into profiles
         const { error: upsertError } = await supabase
           .from('profiles')
           .upsert([{
@@ -204,272 +195,250 @@ export function Users() {
   };
 
   return (
-    <div style={{ padding: '0 1rem' }}>
-      <div className="page-header">
-        <div>
-          <h2>Cuentas de Usuarios</h2>
-          <p className="text-secondary text-sm">Administra los accesos al sistema.</p>
+    <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+      {/* Header with Glassmorphism */}
+      <div className="relative group">
+        <div className="absolute -inset-4 bg-gradient-to-r from-industrial-magenta/10 to-transparent rounded-[3rem] blur-xl opacity-50 group-hover:opacity-100 transition-opacity" />
+        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-8 p-8 bg-white/[0.01] border border-white/5 rounded-[2.5rem] backdrop-blur-sm">
+          <div className="space-y-2">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-industrial-magenta/20 rounded-2xl text-industrial-magenta shadow-[0_0_20px_rgba(230,0,126,0.2)]">
+                <ShieldCheck size={28} strokeWidth={2.5} />
+              </div>
+              <h1 className="text-4xl font-black tracking-tighter uppercase italic">
+                GESTIÓN DE <span className="text-industrial-magenta">USUARIOS</span>
+              </h1>
+            </div>
+            <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.4em] ml-16">
+              Protocolos de seguridad y control de privilegios.
+            </p>
+          </div>
+          
+          <button 
+            onClick={() => setShowInviteInfo(true)}
+            className="group relative flex items-center justify-center gap-3 bg-industrial-magenta text-white px-8 py-5 rounded-[1.5rem] font-black uppercase text-[10px] tracking-[0.2em] transition-all hover:scale-[1.02] active:scale-95 shadow-[0_10px_30px_rgba(230,0,126,0.2)] overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+            <UserPlus size={18} strokeWidth={3} className="relative z-10" />
+            <span className="relative z-10">Expandir Equipo</span>
+          </button>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowInviteInfo(true)}>
-          <UserPlus size={18} /> Agregar Miembro
-        </button>
       </div>
 
+      {/* Main Table Card */}
+      <div className="relative">
+        <div className="absolute -inset-1 bg-gradient-to-b from-white/5 to-transparent rounded-[3rem] blur-sm opacity-50" />
+        <div className="relative bg-[#0a0a0a] border border-white/5 rounded-[3rem] overflow-hidden shadow-2xl">
+          <div className="overflow-x-auto custom-scrollbar">
+            <table className="w-full text-left border-collapse min-w-[1000px]">
+              <thead>
+                <tr className="bg-white/[0.02] border-b border-white/5">
+                  <th className="px-10 py-8 text-[9px] font-black uppercase tracking-[0.5em] text-gray-500">Miembro / Identidad</th>
+                  <th className="px-10 py-8 text-[9px] font-black uppercase tracking-[0.5em] text-gray-500">Rango de Acceso</th>
+                  <th className="px-10 py-8 text-[9px] font-black uppercase tracking-[0.5em] text-gray-500">Blindaje 2FA</th>
+                  <th className="px-10 py-8 text-[9px] font-black uppercase tracking-[0.5em] text-gray-500 text-center">Estado Operativo</th>
+                  <th className="px-10 py-8 text-[9px] font-black uppercase tracking-[0.5em] text-gray-500 text-right">Controles</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.03]">
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={5} className="px-10 py-32 text-center">
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="w-12 h-12 border-4 border-industrial-magenta border-t-transparent rounded-full animate-spin shadow-[0_0_20px_rgba(230,0,126,0.2)]" />
+                        <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.5em] animate-pulse">Sincronizando Directorio</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  users?.map((user: UserAccount) => {
+                    const isSelf = user.authId === currentUser?.id;
+                    const roleStyles = {
+                      admin: 'text-industrial-magenta bg-industrial-magenta/10 border-industrial-magenta/20',
+                      emprendedora: 'text-industrial-cyan bg-industrial-cyan/10 border-industrial-cyan/20',
+                      cliente: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20'
+                    };
+
+                    return (
+                      <tr key={user.authId} className="group hover:bg-white/[0.01] transition-all duration-500">
+                        <td className="px-10 py-8">
+                          <div className="flex items-center gap-5">
+                            <div className="relative">
+                              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-lg border-2 transition-all duration-500 ${
+                                user.role === 'admin' 
+                                  ? 'border-industrial-magenta/30 bg-industrial-magenta/10 text-industrial-magenta' 
+                                  : 'border-white/5 bg-white/[0.02] text-gray-500 group-hover:border-industrial-cyan/30'
+                              }`}>
+                                {user.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                              </div>
+                              <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-black ${user.isActive ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                            </div>
+                            <div className="space-y-1">
+                              <div className="text-sm font-black text-white/90 flex items-center gap-3">
+                                {user.fullName}
+                                {isSelf && (
+                                  <span className="text-[8px] px-2 py-0.5 rounded-full bg-industrial-magenta text-white font-black uppercase tracking-tighter">MÍ</span>
+                                )}
+                              </div>
+                              <div className="text-[10px] text-gray-500 font-bold uppercase tracking-tight flex items-center gap-2">
+                                <Mail size={12} className="text-gray-700" />
+                                {user.email || 'Sin vínculo'}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-10 py-8">
+                          {editingRole === user.authId ? (
+                            <select 
+                              value={user.role} 
+                              onChange={(e) => handleRoleChange(user, e.target.value)}
+                              className="bg-black border border-industrial-cyan/30 rounded-xl px-4 py-2 text-[10px] font-black text-white focus:outline-none focus:ring-2 focus:ring-industrial-cyan/20 transition-all"
+                              disabled={updateRoleMutation.isPending}
+                              onBlur={() => setEditingRole(null)}
+                              autoFocus
+                            >
+                              <option value="cliente">Cliente</option>
+                              <option value="emprendedora">Emprendedora</option>
+                              <option value="admin">Administradora</option>
+                            </select>
+                          ) : (
+                            <button 
+                              onClick={() => !isSelf && setEditingRole(user.authId)}
+                              className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] border-2 transition-all duration-300 ${roleStyles[user.role]} ${!isSelf && 'hover:scale-105 active:scale-95'}`}
+                            >
+                              {user.role}
+                            </button>
+                          )}
+                        </td>
+                        <td className="px-10 py-8">
+                          {user.role === 'cliente' ? (
+                            <span className="text-[9px] font-black text-gray-800 uppercase tracking-[0.4em]">Protección N/A</span>
+                          ) : (
+                            <div className="flex items-center gap-3">
+                              {user.mfaEnabled ? (
+                                <div className="flex items-center gap-2 text-emerald-400 bg-emerald-400/5 px-3 py-1.5 rounded-lg border border-emerald-400/10 shadow-[0_0_15px_rgba(52,211,153,0.05)]">
+                                  <Lock size={14} strokeWidth={3} />
+                                  <span className="text-[9px] font-black uppercase tracking-[0.1em]">ENCRIPTADO</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2 text-red-400/50 bg-red-400/5 px-3 py-1.5 rounded-lg border border-red-400/10">
+                                  <Unlock size={14} strokeWidth={3} />
+                                  <span className="text-[9px] font-black uppercase tracking-[0.1em]">VULNERABLE</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-10 py-8">
+                          <div className="flex flex-col items-center gap-1">
+                            <span className={`text-[9px] font-black uppercase tracking-[0.3em] ${user.isActive ? 'text-emerald-400' : 'text-red-500'}`}>
+                              {user.isActive ? 'OPERATIVO' : 'RESTRINGIDO'}
+                            </span>
+                            <div className={`w-12 h-1 rounded-full ${user.isActive ? 'bg-emerald-400/20' : 'bg-red-500/20'}`}>
+                              <div className={`h-full rounded-full ${user.isActive ? 'bg-emerald-400 w-full shadow-[0_0_10px_rgba(52,211,153,0.5)]' : 'bg-red-500 w-1/3'}`} />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-10 py-8 text-right">
+                          <div className="flex justify-end gap-3">
+                            {isSelf ? (
+                              <button 
+                                className={`px-6 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-300 border ${user.mfaEnabled ? 'bg-white/5 border-white/10 text-gray-500 hover:bg-white/10' : 'bg-emerald-500 border-emerald-400 text-black hover:scale-105 active:scale-95 shadow-[0_10px_20px_rgba(16,185,129,0.2)]'}`}
+                                onClick={() => handleMfaToggle(user.authId, !!user.mfaEnabled)}
+                                disabled={updateMfaMutation.isPending}
+                              >
+                                {user.mfaEnabled ? 'RECONFIGURAR 2FA' : 'BLINDAR CUENTA'}
+                              </button>
+                            ) : (
+                              <>
+                                <button 
+                                  className={`p-3 rounded-2xl border transition-all duration-300 ${user.isActive ? 'bg-white/[0.02] border-white/5 text-gray-500 hover:text-red-500 hover:border-red-500/30 hover:bg-red-500/5' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500 hover:bg-emerald-500/20'}`}
+                                  onClick={() => handleActiveToggle(user)}
+                                  disabled={updateActiveMutation.isPending}
+                                  title={user.isActive ? 'Desactivar Cuenta' : 'Activar Cuenta'}
+                                >
+                                  {user.isActive ? <Ban size={20} /> : <CheckCircle size={20} />}
+                                </button>
+                                <button 
+                                  className="p-3 bg-white/[0.02] border border-white/5 text-gray-500 hover:text-industrial-cyan hover:border-industrial-cyan/30 hover:bg-industrial-cyan/5 rounded-2xl transition-all duration-300"
+                                  disabled={updateRoleMutation.isPending}
+                                  onClick={() => setEditingRole(user.authId === editingRole ? null : user.authId)}
+                                  title="Cambiar Privilegios"
+                                >
+                                  <Fingerprint size={20} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Modern Industrial Invite Modal */}
       {showInviteInfo && (
-        <div className="modal-overlay">
-          <div className="modal-content glass-panel" style={{ maxWidth: '550px' }}>
-            <div className="modal-header">
-              <h3>Cómo Agregar un Miembro</h3>
-              <button className="btn-close" onClick={() => setShowInviteInfo(false)}><X size={18} /></button>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 lg:p-12">
+          <div className="absolute inset-0 bg-black/95 backdrop-blur-xl animate-in fade-in duration-700" onClick={() => setShowInviteInfo(false)} />
+          <div className="relative w-full max-w-2xl bg-[#0a0a0a] border border-white/10 rounded-[3rem] shadow-[0_30px_100px_rgba(0,0,0,0.8)] overflow-hidden animate-in zoom-in-95 duration-500">
+            <div className="p-10 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-industrial-magenta/10 to-transparent">
+              <div>
+                <h3 className="text-2xl font-black tracking-tighter uppercase italic">
+                  PROTOCOLO DE <span className="text-industrial-magenta">INCORPORACIÓN</span>
+                </h3>
+                <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.5em] mt-2">Seguridad de nivel industrial</p>
+              </div>
+              <button 
+                onClick={() => setShowInviteInfo(false)}
+                className="p-4 bg-white/5 hover:bg-white/10 text-gray-500 hover:text-white rounded-2xl transition-all border border-white/10 hover:rotate-90"
+              >
+                <X size={24} />
+              </button>
             </div>
-            <div style={{ lineHeight: 1.6 }}>
-              <p>Para agregar un nuevo miembro al equipo o un cliente:</p>
-              <ol style={{ paddingLeft: '1.25rem' }}>
-                <li>Comparte la URL de la aplicación con el nuevo usuario.</li>
-                <li>La persona debe ir a la página de ingreso y hacer clic en <strong>"Regístrate aquí"</strong>.</li>
-                <li>Una vez registrado, aparecerá en esta lista automáticamente como <strong>"Cliente"</strong>.</li>
-                <li>Puedes cambiarle el rol a "Emprendedora" o "Admin" usando el botón de opciones en su cuenta.</li>
-              </ol>
-              <div style={{ background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.3)', borderRadius: 'var(--radius-md)', padding: '1rem', marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
-                <Info size={18} style={{ flexShrink: 0, color: 'var(--primary-color)', marginTop: '2px' }} />
-                <div className="text-sm">
-                  La autenticación 2FA es opcional y cada usuario puede activarla desde esta pantalla. Solo aplica para miembros del equipo.
+            
+            <div className="p-10 space-y-8">
+              <div className="grid gap-6">
+                {[
+                  { step: "01", text: "Proporcione la URL corporativa al nuevo integrante del equipo." },
+                  { step: "02", text: "El usuario debe completar el registro mediante autenticación biométrica o correo." },
+                  { step: "03", text: "El sistema lo clasificará automáticamente con nivel de acceso 'Cliente'." },
+                  { step: "04", text: "Eleve los privilegios aquí para otorgar acceso a herramientas industriales." }
+                ].map((item, i) => (
+                  <div key={i} className="flex gap-6 p-6 bg-white/[0.01] border border-white/5 rounded-[1.5rem] group hover:border-industrial-magenta/20 transition-all duration-500">
+                    <span className="text-3xl font-black italic text-industrial-magenta/20 group-hover:text-industrial-magenta transition-colors">{item.step}</span>
+                    <p className="text-gray-400 text-sm leading-relaxed font-bold group-hover:text-white/90 transition-colors">{item.text}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-6 bg-industrial-cyan/10 border border-industrial-cyan/20 rounded-[2rem] flex gap-6 items-center">
+                <div className="p-3 bg-industrial-cyan/20 rounded-xl text-industrial-cyan">
+                  <ShieldHalf size={24} />
                 </div>
+                <p className="text-[10px] text-industrial-cyan font-black uppercase tracking-[0.15em] leading-relaxed">
+                  IMPORTANTE: Todo personal con rango superior a 'Cliente' tiene la obligación contractual de mantener activo el blindaje MFA (2FA).
+                </p>
               </div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
-              <button className="btn btn-primary" onClick={() => setShowInviteInfo(false)}>Entendido</button>
+
+            <div className="p-10 border-t border-white/5 bg-white/[0.01] flex justify-end">
+              <button 
+                onClick={() => setShowInviteInfo(false)}
+                className="group relative bg-industrial-magenta text-white px-12 py-5 rounded-[1.5rem] font-black text-[11px] uppercase tracking-[0.4em] transition-all hover:scale-[1.02] active:scale-95 shadow-[0_15px_40px_rgba(230,0,126,0.3)] overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-white/20 translate-x-full group-hover:translate-x-0 transition-transform duration-700" />
+                <span className="relative z-10">Confirmar Protocolo</span>
+              </button>
             </div>
           </div>
         </div>
       )}
-
-      <div className="glass-panel table-container desktop-only">
-        {isLoading ? (
-          <div style={{ padding: '2rem', textAlign: 'center' }}>Cargando usuarios...</div>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Rol</th>
-                <th>Seguridad 2FA</th>
-                <th>Estado Acceso</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users?.map((user: UserAccount) => (
-                <tr key={user.authId}>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <div style={{ 
-                        width: '32px', height: '32px', borderRadius: '50%', 
-                        background: user.role === 'cliente' 
-                          ? 'linear-gradient(135deg, #10b981, #059669)'
-                          : 'linear-gradient(135deg, var(--primary-color), var(--primary-hover))',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold'
-                      }}>
-                        {user.fullName?.charAt(0)?.toUpperCase() || 'U'}
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 600 }}>{user.fullName}</div>
-                        {user.email && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{user.email}</div>}
-                        {user.authId === currentUser?.id && <span className="badge-role" style={{ fontSize: '0.65rem', background: 'rgba(99,102,241,0.15)', color: 'var(--primary-color)', marginTop: '0.25rem', display: 'inline-block' }}>Tú</span>}
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    {editingRole === user.authId ? (
-                      <select 
-                        value={user.role} 
-                        onChange={(e) => handleRoleChange(user, e.target.value)}
-                        className="form-control"
-                        style={{ padding: '0.25rem', fontSize: '0.8rem', width: 'auto' }}
-                        disabled={updateRoleMutation.isPending}
-                        onBlur={() => setEditingRole(null)}
-                        autoFocus
-                      >
-                        <option value="cliente">Cliente</option>
-                        <option value="emprendedora">Emprendedora</option>
-                        <option value="admin">Administradora</option>
-                      </select>
-                    ) : (
-                      <div onClick={() => setEditingRole(user.authId)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        {user.role === 'admin' ? (
-                          <span className="badge-role" style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger-color)' }}>
-                            <ShieldAlert size={14} style={{ marginRight: '0.25rem' }} /> Admin
-                          </span>
-                        ) : user.role === 'emprendedora' ? (
-                          <span className="badge-role" style={{ background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary-color)' }}>
-                            <UserCog size={14} style={{ marginRight: '0.25rem' }} /> Emprendedora
-                          </span>
-                        ) : (
-                          <span className="badge-role" style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success-color)' }}>
-                            <UsersIcon size={14} style={{ marginRight: '0.25rem' }} /> Cliente
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                  <td>
-                    {user.role === 'cliente' ? (
-                      <span className="text-secondary text-sm">No aplicable</span>
-                    ) : user.mfaEnabled ? (
-                      <span className="badge-role" style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success-color)' }}>
-                        <Lock size={14} style={{ marginRight: '0.25rem' }} /> Protegido
-                      </span>
-                    ) : (
-                      <span className="badge-role" style={{ background: 'rgba(107, 114, 128, 0.1)', color: 'var(--color-text-secondary)' }}>
-                        <Unlock size={14} style={{ marginRight: '0.25rem' }} /> Básico
-                      </span>
-                    )}
-                  </td>
-                  <td>
-                    {user.isActive ? (
-                      <span className="badge-role" style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success-color)' }}>
-                        <CheckCircle size={14} style={{ marginRight: '0.25rem' }} /> Activo
-                      </span>
-                    ) : (
-                      <span className="badge-role" style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger-color)' }}>
-                        <Ban size={14} style={{ marginRight: '0.25rem' }} /> Inactivo
-                      </span>
-                    )}
-                  </td>
-                  <td style={{ display: 'flex', gap: '0.5rem' }}>
-                    {user.authId === currentUser?.id ? (
-                      <button 
-                        className={`btn ${user.mfaEnabled ? 'btn-outline' : 'btn-primary'}`}
-                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                        onClick={() => handleMfaToggle(user.authId, !!user.mfaEnabled)}
-                        disabled={updateMfaMutation.isPending}
-                      >
-                        {user.mfaEnabled ? 'Desactivar 2FA' : 'Activar 2FA'}
-                      </button>
-                    ) : (
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button 
-                          className={`btn ${user.isActive ? 'btn-outline' : 'btn-primary'}`}
-                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', borderColor: user.isActive ? 'var(--danger-color)' : undefined, color: user.isActive ? 'var(--danger-color)' : undefined }}
-                          onClick={() => handleActiveToggle(user)}
-                          disabled={updateActiveMutation.isPending}
-                        >
-                          {user.isActive ? 'Desactivar' : 'Activar'}
-                        </button>
-                        <button 
-                          className="btn btn-outline" 
-                          style={{ padding: '0.25rem 0.5rem' }}
-                          disabled={updateRoleMutation.isPending}
-                          onClick={() => setEditingRole(user.authId === editingRole ? null : user.authId)}
-                          title="Cambiar Rol"
-                        >
-                          <Shield size={16} />
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* Mobile view - Cards */}
-      <div className="mobile-only">
-        {isLoading ? (
-          <div style={{ padding: '2rem', textAlign: 'center' }}>Cargando usuarios...</div>
-        ) : (
-          <div style={{ display: 'grid', gap: '1rem' }}>
-            {users?.map((user: UserAccount) => (
-              <div key={user.authId} className="glass-panel" style={{ padding: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                    <div style={{ 
-                      width: '40px', height: '40px', borderRadius: '50%', 
-                      background: user.role === 'cliente' 
-                        ? 'linear-gradient(135deg, #10b981, #059669)'
-                        : 'linear-gradient(135deg, var(--primary-color), var(--primary-hover))',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold'
-                    }}>
-                      {user.fullName?.charAt(0)?.toUpperCase() || 'U'}
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 600 }}>{user.fullName}</div>
-                      {user.email && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{user.email}</div>}
-                      <div style={{ display: 'flex', gap: '0.25rem', marginTop: '0.25rem' }}>
-                        {user.authId === currentUser?.id && <span className="badge-role" style={{ fontSize: '0.6rem', background: 'rgba(99,102,241,0.15)', color: 'var(--primary-color)' }}>Tú</span>}
-                        {user.role !== 'cliente' && (
-                          user.mfaEnabled ? (
-                            <span className="badge-role" style={{ fontSize: '0.6rem', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success-color)' }}>2FA ON</span>
-                          ) : (
-                            <span className="badge-role" style={{ fontSize: '0.6rem', background: 'rgba(107, 114, 128, 0.1)', color: 'var(--color-text-secondary)' }}>2FA OFF</span>
-                          )
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {editingRole === user.authId ? (
-                    <select 
-                      value={user.role} 
-                      onChange={(e) => handleRoleChange(user, e.target.value)}
-                      className="form-control"
-                      style={{ padding: '0.25rem', fontSize: '0.7rem', width: 'auto' }}
-                      disabled={updateRoleMutation.isPending}
-                      onBlur={() => setEditingRole(null)}
-                    >
-                      <option value="cliente">Cliente</option>
-                      <option value="emprendedora">Emprendedora</option>
-                      <option value="admin">Administradora</option>
-                    </select>
-                  ) : (
-                    <div onClick={() => setEditingRole(user.authId)}>
-                      {user.role === 'admin' ? (
-                        <span className="badge-role" style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger-color)' }}>Admin</span>
-                      ) : user.role === 'emprendedora' ? (
-                        <span className="badge-role" style={{ background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary-color)' }}>Emprendedora</span>
-                      ) : (
-                        <span className="badge-role" style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success-color)' }}>Cliente</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-                
-                {user.authId === currentUser?.id ? (
-                  <button 
-                    className={`btn ${user.mfaEnabled ? 'btn-outline' : 'btn-primary'}`}
-                    style={{ width: '100%' }}
-                    onClick={() => handleMfaToggle(user.authId, !!user.mfaEnabled)}
-                    disabled={updateMfaMutation.isPending}
-                  >
-                    {user.mfaEnabled ? <Unlock size={16} /> : <Lock size={16} />} 
-                    {user.mfaEnabled ? ' Desactivar 2FA' : ' Activar 2FA'}
-                  </button>
-                ) : (
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button 
-                      className={`btn ${user.isActive ? 'btn-outline' : 'btn-primary'}`}
-                      style={{ flex: 1, borderColor: user.isActive ? 'var(--danger-color)' : undefined, color: user.isActive ? 'var(--danger-color)' : undefined }}
-                      onClick={() => handleActiveToggle(user)}
-                      disabled={updateActiveMutation.isPending}
-                    >
-                      {user.isActive ? 'Desactivar' : 'Activar'}
-                    </button>
-                    <button 
-                      className="btn btn-outline" 
-                      style={{ flex: 1 }}
-                      disabled={updateRoleMutation.isPending}
-                      onClick={() => setEditingRole(user.authId === editingRole ? null : user.authId)}
-                    >
-                      <Shield size={16} /> Rol
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
+

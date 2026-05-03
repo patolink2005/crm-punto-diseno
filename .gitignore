@@ -28,3 +28,6 @@ dist-ssr
 # Backups generados por la app
 crmpunto_backup_*.json
 build_log.txt
+client_secret_*.json
+*.md
+DOCUMENTACION_MVP.html

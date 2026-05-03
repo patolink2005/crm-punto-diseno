@@ -98,6 +98,15 @@ export const orderService = {
     if (error) throw error;
   },
 
+  async updateInternalNotes(id: string, notes: string): Promise<void> {
+    const { error } = await supabase
+      .from('orders')
+      .update({ notes, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    
+    if (error) throw error;
+  },
+
   async addItem(item: Partial<OrderItem> & { order_id: string }): Promise<OrderItem> {
     const { data, error } = await supabase.from('order_items').insert([item]).select().single();
     if (error) throw error;

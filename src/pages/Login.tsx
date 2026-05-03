@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { supabase } from '../lib/supabase';
 import type { Factor } from '@supabase/supabase-js';
 import { useAuthStore } from '../store/authStore';
 import { QRCodeSVG } from 'qrcode.react';
-import './Login.css';
+import { ArrowLeft, Loader2, ShieldCheck, UserPlus, LogIn, AlertCircle } from 'lucide-react';
+import { loginSchema, signUpSchema, type LoginInput, type SignUpInput } from '../lib/schemas';
 
 type LoginStep = 'CREDENTIALS' | 'SIGN_UP' | 'SETUP_2FA' | 'CHALLENGE_2FA' | 'PENDING_APPROVAL';
 
@@ -21,17 +24,23 @@ function GoogleIcon() {
 }
 
 export function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
   const [code, setCode] = useState('');
   const [factorId, setFactorId] = useState('');
   const [qrCode, setQrCode] = useState('');
-  const [secret, setSecret] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [step, setStep] = useState<LoginStep>('CREDENTIALS');
+
+  const { register: registerLogin, handleSubmit: handleSubmitLogin, formState: { errors: loginErrors } } = useForm<LoginInput>({
+    resolver: zodResolver(loginSchema)
+  });
+
+  const { register: registerSignUp, handleSubmit: handleSubmitSignUp, formState: { errors: signUpErrors }, watch: watchSignUp } = useForm<SignUpInput>({
+    resolver: zodResolver(signUpSchema)
+  });
+
+  const signUpPassword = watchSignUp('password', '');
   
   const navigate = useNavigate();
   const { session, isInitialized, profile, clientProfile } = useAuthStore();
@@ -50,42 +59,34 @@ export function Login() {
     
     setFactorId(data.id);
     setQrCode(data.totp.uri || data.totp.qr_code);
-    setSecret(data.totp.secret);
     setStep('SETUP_2FA');
     setLoading(false);
   }, []);
 
   const checkMfaStatus = useCallback(async () => {
-    // Si es cliente, no requiere MFA por ahora, va directo al portal
     if (clientProfile) {
       navigate('/portal');
       return;
     }
 
     const { data: aalData, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (aalError) {
-      console.error(aalError);
-      return;
-    }
+    if (aalError) return;
 
     if (aalData.currentLevel === 'aal2') {
-      navigate('/');
+      navigate('/admin');
       return;
     }
 
-    // Verificar si la cuenta está activa (aprobada por admin)
     if (profile && profile.is_active === false) {
       setStep('PENDING_APPROVAL');
       return;
     }
 
-    // Si no tiene MFA habilitado, dejar pasar con AAL1
     if (!profile || !profile.mfa_enabled) {
-      navigate('/');
+      navigate('/admin');
       return;
     }
 
-    // Determinar si ya tiene factor TOTP registrado
     const factors = await supabase.auth.mfa.listFactors();
     const allFactors = factors.data?.all || [];
     const totpFactors = allFactors.filter((f: Factor) => f.factor_type === 'totp');
@@ -108,21 +109,17 @@ export function Login() {
   
   useEffect(() => {
     if (isInitialized && session) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       checkMfaStatus();
     }
   }, [isInitialized, session, checkMfaStatus]);
 
-  // ── Handlers de email/password ──────────────────────────────────────────────
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (data: LoginInput) => {
     setLoading(true);
     setError('');
 
     const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+      email: data.email,
+      password: data.password,
     });
 
     if (signInError) {
@@ -130,22 +127,17 @@ export function Login() {
       setLoading(false);
       return;
     }
-    
-    setLoading(false);
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSignUp = async (data: SignUpInput) => {
     setLoading(true);
     setError('');
 
     const { error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
+      email: data.email,
+      password: data.password,
       options: {
-        data: {
-          full_name: fullName
-        }
+        data: { full_name: data.fullName }
       }
     });
 
@@ -155,12 +147,9 @@ export function Login() {
       return;
     }
     
-    // El trigger de DB crea el perfil automáticamente con is_active=false
     setStep('PENDING_APPROVAL');
     setLoading(false);
   };
-
-  // ── Handler de Google OAuth ─────────────────────────────────────────────────
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
@@ -177,11 +166,7 @@ export function Login() {
       setError('Error al conectar con Google. Intentá de nuevo.');
       setGoogleLoading(false);
     }
-    // Si tiene éxito, redirige automáticamente a Google y vuelve al callback.
-    // El trigger de DB crea el perfil y checkMfaStatus() maneja el resto.
   };
-
-  // ── Handler de 2FA ──────────────────────────────────────────────────────────
 
   const verify2FA = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -207,218 +192,208 @@ export function Login() {
       return;
     }
 
-    navigate('/');
+    navigate('/admin');
   };
 
-  // ── Render ──────────────────────────────────────────────────────────────────
-
   return (
-    <div className="login-container">
-      <div className="login-box glass-panel">
-        <div className="login-header">
-          <h2>Punto Diseño</h2>
-          <p>{step === 'SIGN_UP' ? 'Crear cuenta' : 'Acceso al CRM'}</p>
-        </div>
+    <div className="min-h-screen bg-black flex items-center justify-center p-6 relative overflow-hidden font-sans selection:bg-industrial-cyan/30">
+      
+      {/* Background Accents */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-[-10%] right-[-10%] w-[60%] h-[60%] bg-industrial-cyan/5 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-industrial-magenta/5 rounded-full blur-[120px]" />
+      </div>
 
-        {error && <div className="alert-danger">{error}</div>}
+      <div className="w-full max-w-md relative z-10">
+        
+        {/* Back Link */}
+        <Link to="/" className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-white transition-colors mb-12">
+          <ArrowLeft size={14} /> Volver al Inicio
+        </Link>
 
-        {/* ── Step: CREDENTIALS ── */}
-        {step === 'CREDENTIALS' && (
-          <>
-            {/* Botón Google */}
-            <button
-              id="btn-google-login"
-              type="button"
-              className="btn btn-google w-full"
-              onClick={handleGoogleLogin}
-              disabled={googleLoading || loading}
-            >
-              {googleLoading ? (
-                <span className="login-spinner" />
-              ) : (
-                <GoogleIcon />
-              )}
-              Continuar con Google
-            </button>
+        {/* Card */}
+        <div className="bg-white/[0.02] border border-white/5 backdrop-blur-xl rounded-[2.5rem] p-10 md:p-14 shadow-2xl">
+          
+          <div className="text-center mb-12">
+            <h1 className="text-2xl font-bold tracking-tighter mb-2">
+              PUNTO<span className="text-industrial-cyan ml-1">DISEÑO</span>
+            </h1>
+            <p className="text-gray-500 text-[10px] font-bold uppercase tracking-[0.25em]">
+              {step === 'SIGN_UP' ? 'Crear nueva cuenta' : step === 'CREDENTIALS' ? 'Acceso Plataforma' : 'Seguridad'}
+            </p>
+          </div>
 
-            <div className="login-divider">
-              <span>o con email</span>
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-2xl mb-8 flex items-start gap-3 text-sm">
+              <AlertCircle className="shrink-0 w-5 h-5" />
+              <span>{error}</span>
             </div>
+          )}
 
-            <form onSubmit={handleLogin}>
-              <div className="form-group">
-                <label className="form-label">Email</label>
-                <input
-                  id="input-email-login"
-                  type="email"
-                  className="input-base"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                  disabled={loading}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Contraseña</label>
-                <input
-                  id="input-password-login"
-                  type="password"
-                  className="input-base"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  disabled={loading}
-                />
-              </div>
+          {/* ── Step: CREDENTIALS ── */}
+          {step === 'CREDENTIALS' && (
+            <div className="space-y-8">
               <button
-                id="btn-email-login"
-                type="submit"
-                className="btn btn-primary w-full"
-                disabled={loading || googleLoading}
+                onClick={handleGoogleLogin}
+                disabled={googleLoading || loading}
+                className="w-full flex items-center justify-center gap-4 bg-white/[0.04] border border-white/10 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-white/[0.08] transition-all disabled:opacity-50"
               >
-                {loading ? <><span className="login-spinner" /> Ingresando...</> : 'Iniciar Sesión'}
+                {googleLoading ? <Loader2 className="animate-spin" /> : <GoogleIcon />}
+                Continuar con Google
               </button>
-            </form>
 
-            <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-              <p className="text-sm text-secondary">
-                ¿No tienes cuenta?{' '}
+              <div className="flex items-center gap-4 text-gray-700">
+                <div className="h-px flex-grow bg-white/5"></div>
+                <span className="text-[10px] font-bold uppercase tracking-widest">o con email</span>
+                <div className="h-px flex-grow bg-white/5"></div>
+              </div>
+
+              <form onSubmit={handleSubmitLogin(handleLogin)} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-2">Email</label>
+                  <input
+                    type="email"
+                    {...registerLogin('email')}
+                    className={`w-full bg-white/[0.04] border ${loginErrors.email ? 'border-red-500/50' : 'border-white/10'} rounded-2xl px-6 py-4 focus:border-industrial-cyan focus:outline-none transition-all text-sm font-light`}
+                    placeholder="tu@email.com"
+                  />
+                  {loginErrors.email && <p className="text-[10px] text-red-500 ml-2">{loginErrors.email.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-2">Contraseña</label>
+                  <input
+                    type="password"
+                    {...registerLogin('password')}
+                    className={`w-full bg-white/[0.04] border ${loginErrors.password ? 'border-red-500/50' : 'border-white/10'} rounded-2xl px-6 py-4 focus:border-industrial-cyan focus:outline-none transition-all text-sm font-light`}
+                    placeholder="••••••••"
+                  />
+                  {loginErrors.password && <p className="text-[10px] text-red-500 ml-2">{loginErrors.password.message}</p>}
+                </div>
                 <button
-                  className="text-link"
+                  type="submit"
+                  disabled={loading || googleLoading}
+                  className="w-full py-5 bg-white text-black rounded-full font-bold text-xs uppercase tracking-widest hover:bg-industrial-cyan transition-all transform active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
+                >
+                  {loading ? <Loader2 className="animate-spin" /> : <LogIn size={18} />}
+                  Ingresar
+                </button>
+              </form>
+
+              <div className="text-center pt-4">
+                <button
                   onClick={() => { setStep('SIGN_UP'); setError(''); }}
-                  style={{ background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', fontWeight: 600 }}
+                  className="text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-industrial-cyan transition-colors"
                 >
-                  Regístrate aquí
+                  ¿No tienes cuenta? <span className="text-white">Regístrate</span>
                 </button>
-              </p>
+              </div>
             </div>
-          </>
-        )}
+          )}
 
-        {/* ── Step: SIGN_UP ── */}
-        {step === 'SIGN_UP' && (
-          <>
-            {/* Botón Google también disponible en registro */}
-            <button
-              id="btn-google-signup"
-              type="button"
-              className="btn btn-google w-full"
-              onClick={handleGoogleLogin}
-              disabled={googleLoading || loading}
-            >
-              {googleLoading ? (
-                <span className="login-spinner" />
-              ) : (
-                <GoogleIcon />
-              )}
-              Registrarse con Google
-            </button>
-
-            <div className="login-divider">
-              <span>o con email</span>
-            </div>
-
-            <form onSubmit={handleSignUp}>
-              <div className="form-group">
-                <label className="form-label">Nombre Completo</label>
-                <input
-                  id="input-fullname-signup"
-                  type="text"
-                  className="input-base"
-                  value={fullName}
-                  onChange={e => setFullName(e.target.value)}
-                  required
-                  placeholder="Ej: Juan Pérez"
-                  disabled={loading}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Email</label>
-                <input
-                  id="input-email-signup"
-                  type="email"
-                  className="input-base"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                  disabled={loading}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Contraseña</label>
-                <input
-                  id="input-password-signup"
-                  type="password"
-                  className="input-base"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  disabled={loading}
-                />
-              </div>
-              <button
-                id="btn-email-signup"
-                type="submit"
-                className="btn btn-primary w-full"
-                disabled={loading || googleLoading}
-              >
-                {loading ? <><span className="login-spinner" /> Registrando...</> : 'Crear Cuenta'}
-              </button>
-            </form>
-
-            <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-              <p className="text-sm text-secondary">
-                ¿Ya tienes cuenta?{' '}
+          {/* ── Step: SIGN_UP ── */}
+          {step === 'SIGN_UP' && (
+            <div className="space-y-8">
+              <form onSubmit={handleSubmitSignUp(handleSignUp)} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-2">Nombre Completo</label>
+                  <input
+                    type="text"
+                    {...registerSignUp('fullName')}
+                    className={`w-full bg-white/[0.04] border ${signUpErrors.fullName ? 'border-red-500/50' : 'border-white/10'} rounded-2xl px-6 py-4 focus:border-industrial-cyan focus:outline-none transition-all text-sm font-light`}
+                    placeholder="Nombre y Apellido"
+                  />
+                  {signUpErrors.fullName && <p className="text-[10px] text-red-500 ml-2">{signUpErrors.fullName.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-2">Email</label>
+                  <input
+                    type="email"
+                    {...registerSignUp('email')}
+                    className={`w-full bg-white/[0.04] border ${signUpErrors.email ? 'border-red-500/50' : 'border-white/10'} rounded-2xl px-6 py-4 focus:border-industrial-cyan focus:outline-none transition-all text-sm font-light`}
+                    placeholder="tu@email.com"
+                  />
+                  {signUpErrors.email && <p className="text-[10px] text-red-500 ml-2">{signUpErrors.email.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center ml-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Contraseña</label>
+                    <span className="text-[9px] text-gray-600 font-medium">Requiere: A-z, 0-9, #!$</span>
+                  </div>
+                  <input
+                    type="password"
+                    {...registerSignUp('password')}
+                    className={`w-full bg-white/[0.04] border ${signUpErrors.password ? 'border-red-500/50' : 'border-white/10'} rounded-2xl px-6 py-4 focus:border-industrial-cyan focus:outline-none transition-all text-sm font-light`}
+                    placeholder="Mínimo 8 caracteres"
+                  />
+                  {signUpErrors.password && <p className="text-[10px] text-red-500 ml-2">{signUpErrors.password.message}</p>}
+                  <div className="grid grid-cols-4 gap-1 px-1">
+                    <div className={`h-1 rounded-full transition-colors ${signUpPassword.length >= 8 ? 'bg-industrial-cyan' : 'bg-white/10'}`}></div>
+                    <div className={`h-1 rounded-full transition-colors ${/[A-Z]/.test(signUpPassword) && /[a-z]/.test(signUpPassword) ? 'bg-industrial-cyan' : 'bg-white/10'}`}></div>
+                    <div className={`h-1 rounded-full transition-colors ${/\d/.test(signUpPassword) ? 'bg-industrial-cyan' : 'bg-white/10'}`}></div>
+                    <div className={`h-1 rounded-full transition-colors ${/[@$!%*?&]/.test(signUpPassword) ? 'bg-industrial-cyan' : 'bg-white/10'}`}></div>
+                  </div>
+                </div>
                 <button
-                  className="text-link"
-                  onClick={() => { setStep('CREDENTIALS'); setError(''); }}
-                  style={{ background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', fontWeight: 600 }}
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-5 bg-white text-black rounded-full font-bold text-xs uppercase tracking-widest hover:bg-industrial-cyan transition-all flex items-center justify-center gap-3"
                 >
-                  Inicia sesión
+                  {loading ? <Loader2 className="animate-spin" /> : <UserPlus size={18} />}
+                  Crear Cuenta
                 </button>
-              </p>
-            </div>
-          </>
-        )}
+              </form>
 
-        {/* ── Step: SETUP_2FA ── */}
-        {step === 'SETUP_2FA' && (
-           <div className="setup-2fa">
-             <h3>Configurar Autenticador</h3>
-             <p className="text-sm text-secondary mb-4">Escanea este código con Google Authenticator o Authy.</p>
-             <div className="qr-container mb-4">
-               {qrCode && <QRCodeSVG value={qrCode} size={200} />}
-             </div>
-             <p className="text-sm mb-4">O ingresa el código manual: <code>{secret}</code></p>
-             <form onSubmit={verify2FA}>
-               <div className="form-group">
-                 <label className="form-label">Código del Autenticador</label>
+              <div className="text-center pt-4">
+                <button
+                  onClick={() => { setStep('CREDENTIALS'); setError(''); }}
+                  className="text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-industrial-cyan transition-colors"
+                >
+                  ¿Ya tienes cuenta? <span className="text-white">Inicia Sesión</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Step: SETUP_2FA ── */}
+          {step === 'SETUP_2FA' && (
+             <div className="text-center space-y-8">
+               <h3 className="text-xl font-bold tracking-tight">Activar Seguridad 2FA</h3>
+               <div className="bg-white p-6 rounded-3xl inline-block shadow-inner">
+                 {qrCode && <QRCodeSVG value={qrCode} size={180} />}
+               </div>
+               <p className="text-gray-500 text-xs leading-relaxed px-4">
+                 Escanea el código con Google Authenticator o Authy para proteger tu cuenta.
+               </p>
+               <form onSubmit={verify2FA} className="space-y-6">
                  <input 
                   type="text" 
-                  className="input-base text-center" 
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-2xl px-6 py-4 text-center text-xl font-bold tracking-[0.5em] focus:border-industrial-cyan focus:outline-none" 
                   placeholder="000000"
                   maxLength={6}
                   value={code} 
                   onChange={e => setCode(e.target.value)} 
                   required 
                 />
-               </div>
-               <button type="submit" className="btn btn-primary w-full" disabled={loading}>Verificar y Activar 2FA</button>
-             </form>
-           </div>
-        )}
+                <button type="submit" className="w-full py-5 bg-industrial-cyan text-black rounded-full font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-3">
+                  {loading ? <Loader2 className="animate-spin" /> : <ShieldCheck size={18} />}
+                  Verificar y Activar
+                </button>
+               </form>
+             </div>
+          )}
 
-        {/* ── Step: CHALLENGE_2FA ── */}
-        {step === 'CHALLENGE_2FA' && (
-           <div className="challenge-2fa">
-             <h3>Verificación de 2 Pasos</h3>
-             <p className="text-sm text-secondary mb-4">Ingresa el código generado por tu aplicación autenticadora.</p>
-             <form onSubmit={verify2FA}>
-               <div className="form-group">
+          {/* ── Step: CHALLENGE_2FA ── */}
+          {step === 'CHALLENGE_2FA' && (
+             <div className="text-center space-y-8">
+               <h3 className="text-xl font-bold tracking-tight">Verificación en 2 Pasos</h3>
+               <div className="w-20 h-20 bg-industrial-cyan/10 text-industrial-cyan rounded-full flex items-center justify-center mx-auto mb-8">
+                  <ShieldCheck size={40} />
+               </div>
+               <p className="text-gray-500 text-xs">Ingresa el código de seguridad de tu app autenticadora.</p>
+               <form onSubmit={verify2FA} className="space-y-6">
                  <input 
                   type="text" 
-                  className="input-base text-center text-lg" 
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-2xl px-6 py-4 text-center text-xl font-bold tracking-[0.5em] focus:border-industrial-cyan focus:outline-none" 
                   placeholder="000000"
                   maxLength={6}
                   value={code} 
@@ -426,33 +401,42 @@ export function Login() {
                   required 
                   autoFocus
                 />
-               </div>
-               <button type="submit" className="btn btn-primary w-full" disabled={loading}>Verificar</button>
-             </form>
-           </div>
-        )}
-
-        {/* ── Step: PENDING_APPROVAL ── */}
-        {step === 'PENDING_APPROVAL' && (
-           <div className="pending-approval text-center">
-             <div className="mb-4" style={{ color: 'var(--primary-color)' }}>
-               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '64px', height: '64px' }}>
-                 <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-               </svg>
+                <button type="submit" className="w-full py-5 bg-white text-black rounded-full font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-industrial-cyan transition-all">
+                  {loading ? <Loader2 className="animate-spin" /> : 'Verificar'}
+                </button>
+               </form>
              </div>
-             <h3>Cuenta Pendiente</h3>
-             <p className="text-secondary mb-6">Tu cuenta ha sido creada exitosamente, pero debe ser aprobada por un administrador antes de que puedas acceder al CRM.</p>
-             <button 
-               className="btn btn-outline w-full" 
-               onClick={async () => {
-                 await supabase.auth.signOut();
-                 window.location.reload();
-               }}
-             >
-               Cerrar Sesión
-             </button>
-           </div>
-        )}
+          )}
+
+          {/* ── Step: PENDING_APPROVAL ── */}
+          {step === 'PENDING_APPROVAL' && (
+             <div className="text-center space-y-8">
+               <div className="w-20 h-20 bg-industrial-magenta/10 text-industrial-magenta rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse">
+                  <AlertCircle size={40} />
+               </div>
+               <h3 className="text-2xl font-bold tracking-tight">Cuenta Pendiente</h3>
+               <p className="text-gray-400 text-sm leading-relaxed">
+                 Tu cuenta ha sido creada exitosamente, pero debe ser aprobada por un administrador antes de que puedas acceder al CRM.
+               </p>
+               <button 
+                 className="w-full py-4 bg-white/5 border border-white/10 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all" 
+                 onClick={async () => {
+                   await supabase.auth.signOut();
+                   window.location.reload();
+                 }}
+               >
+                 Cerrar Sesión
+               </button>
+             </div>
+          )}
+        </div>
+
+        {/* Footer info */}
+        <div className="mt-12 text-center">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-700">
+            © 2026 PUNTO DISEÑO · CRM INTERNO
+          </p>
+        </div>
       </div>
     </div>
   );

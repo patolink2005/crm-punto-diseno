@@ -1,4 +1,4 @@
-import { Plus, Trash2, GripVertical } from 'lucide-react';
+import { Plus, Trash2, GripVertical, List } from 'lucide-react';
 import type { ProductAttribute } from '../../types';
 
 // We extend the shared ProductAttribute to include an ID for React keys
@@ -57,82 +57,85 @@ export function ProductAttributesEditor({ attributes, onChange }: Props) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center mb-4">
-        <h4 className="text-sm font-medium">Campos de Personalización</h4>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center bg-white/[0.02] border border-white/5 p-4 rounded-2xl">
+        <div className="flex items-center gap-3">
+          <List size={18} className="text-industrial-cyan" />
+          <h4 className="text-xs font-bold uppercase tracking-widest text-gray-300">Campos de Personalización</h4>
+        </div>
         <button 
           type="button" 
-          className="btn btn-outline btn-sm" 
+          className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all" 
           onClick={addAttribute}
-          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
         >
           <Plus size={14} /> Añadir Campo
         </button>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div className="space-y-4">
         {attributes.length === 0 && (
-          <div className="text-center p-4 border border-dashed rounded-lg text-secondary text-sm">
+          <div className="text-center py-12 px-6 border border-dashed border-white/10 rounded-[2rem] text-gray-500 text-[10px] uppercase tracking-[0.2em] font-medium">
             No hay campos configurados. El producto no tendrá opciones extras.
           </div>
         )}
         
         {attributes.map((attr, attrIdx) => (
-          <div key={attr.id} className="glass-panel" style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)' }}>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', marginBottom: '1rem' }}>
-              <GripVertical size={20} className="text-secondary" style={{ marginTop: '0.5rem' }} />
+          <div key={attr.id} className="relative group bg-white/[0.02] border border-white/5 hover:border-industrial-cyan/30 rounded-3xl p-6 transition-all duration-300">
+            <div className="flex gap-6 items-start">
+              <div className="mt-4 opacity-30 group-hover:opacity-100 transition-opacity">
+                <GripVertical size={20} className="text-gray-400" />
+              </div>
               
-              <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label text-xs">Etiqueta (Lo que ve el usuario)</label>
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest ml-1">Etiqueta (Lo que ve el usuario)</label>
                   <input 
-                    className="input-base" 
+                    className="w-full bg-black/20 border border-white/10 focus:border-industrial-cyan/50 rounded-xl px-4 py-3 outline-none transition-all text-xs font-medium" 
                     value={attr.label || attr.name} 
                     onChange={e => updateAttribute(attrIdx, { label: e.target.value, name: e.target.value.toLowerCase().replace(/\s+/g, '_') })}
+                    placeholder="Ej: Material"
                   />
                 </div>
                 
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label text-xs">Tipo de Campo</label>
+                <div className="space-y-2">
+                  <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest ml-1">Tipo de Campo</label>
                   <select 
-                    className="input-base" 
+                    className="w-full bg-black/20 border border-white/10 focus:border-industrial-cyan/50 rounded-xl px-4 py-3 outline-none transition-all text-xs font-medium appearance-none" 
                     value={attr.type}
                     onChange={e => updateAttribute(attrIdx, { type: e.target.value as 'select' | 'text' | 'number' | 'toggle' })}
                   >
-                    <option value="select">Lista de Opciones (Desplegable)</option>
-                    <option value="text">Texto Libre</option>
-                    <option value="number">Número</option>
-                    <option value="toggle">Si / No (Interruptor)</option>
+                    <option value="select" className="bg-zinc-900">Lista de Opciones (Desplegable)</option>
+                    <option value="text" className="bg-zinc-900">Texto Libre</option>
+                    <option value="number" className="bg-zinc-900">Número</option>
+                    <option value="toggle" className="bg-zinc-900">Si / No (Interruptor)</option>
                   </select>
                 </div>
               </div>
 
               <button 
                 type="button" 
-                className="btn btn-outline btn-sm text-danger" 
+                className="mt-6 p-2 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all" 
                 onClick={() => removeAttribute(attrIdx)}
-                style={{ marginTop: '1.25rem', border: 'none', color: 'var(--danger-color)' }}
               >
-                <Trash2 size={16} />
+                <Trash2 size={18} />
               </button>
             </div>
 
             {attr.type === 'select' && (
-              <div style={{ marginLeft: '2.5rem', padding: '0.5rem', background: 'rgba(0,0,0,0.1)', borderRadius: '8px' }}>
-                <label className="form-label text-xs" style={{ marginBottom: '0.5rem', display: 'block' }}>Opciones de la lista:</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div className="mt-6 ml-11 p-6 bg-black/40 border border-white/5 rounded-2xl space-y-4">
+                <label className="text-[9px] font-bold text-industrial-cyan/60 uppercase tracking-widest block">Opciones disponibles:</label>
+                <div className="flex flex-wrap gap-2">
                   {attr.options?.map((opt, optIdx) => (
-                    <div key={optIdx} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <div key={optIdx} className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-lg p-1 group/opt hover:border-industrial-cyan/30 transition-all">
                       <input 
-                        className="input-base" 
-                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', width: '120px' }}
+                        className="bg-transparent border-none focus:ring-0 text-[10px] font-bold text-gray-300 w-24 px-2 py-1 outline-none" 
                         value={opt}
                         onChange={e => updateOption(attrIdx, optIdx, e.target.value)}
                       />
                       <button 
                         type="button" 
                         onClick={() => removeOption(attrIdx, optIdx)}
-                        style={{ background: 'none', border: 'none', color: 'var(--danger-color)', cursor: 'pointer', padding: 0 }}
+                        className="p-1 text-gray-600 hover:text-red-400 transition-colors"
                       >
                         <Trash2 size={12} />
                       </button>
@@ -140,11 +143,10 @@ export function ProductAttributesEditor({ attributes, onChange }: Props) {
                   ))}
                   <button 
                     type="button" 
-                    className="btn btn-outline btn-xs" 
+                    className="flex items-center gap-1 px-3 py-1 bg-industrial-cyan/10 hover:bg-industrial-cyan/20 text-industrial-cyan border border-industrial-cyan/20 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all" 
                     onClick={() => addOption(attrIdx)}
-                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.7rem' }}
                   >
-                    + Añadir
+                    <Plus size={12} /> Añadir
                   </button>
                 </div>
               </div>

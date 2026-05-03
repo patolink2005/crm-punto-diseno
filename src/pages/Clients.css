@@ -11,11 +11,11 @@
 
 .table th, .table td {
   padding: 1rem;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .table th {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-weight: 500;
   font-size: 0.875rem;
 }
@@ -30,17 +30,17 @@
 
 .status-activo {
   background-color: rgba(16, 185, 129, 0.1);
-  color: var(--color-success);
+  color: var(--success-color);
 }
 
 .status-potencial {
   background-color: rgba(59, 130, 246, 0.1);
-  color: var(--color-accent);
+  color: var(--primary-color);
 }
 
 .status-inactivo {
   background-color: rgba(100, 116, 139, 0.1);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 /* Modal Simple */

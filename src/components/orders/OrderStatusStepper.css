@@ -1,0 +1,103 @@
+.stepper-wrapper {
+  padding: 2rem 0;
+  width: 100%;
+}
+
+.stepper-horizontal {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* Background line */
+.stepper-horizontal::before {
+  content: '';
+  position: absolute;
+  top: 18px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--border-color);
+  z-index: 0;
+}
+
+/* Progress line */
+.stepper-progress-line {
+  position: absolute;
+  top: 18px;
+  left: 0;
+  height: 2px;
+  background: var(--primary-color);
+  z-index: 1;
+  transition: width var(--transition-speed) cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.step-item {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  flex: 1;
+}
+
+.step-circle {
+  width: 36px;
+  height: 36px;
+  background: var(--background-color);
+  border: 2px solid var(--border-color);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-speed) ease;
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.step-item.completed .step-circle {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: var(--background-color);
+}
+
+.step-item.active .step-circle {
+  background: var(--background-color);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  box-shadow: 0 0 15px color-mix(in srgb, var(--primary-color), transparent 70%);
+}
+
+.step-item.pending .step-circle:hover {
+  border-color: #00d2ff80;
+}
+
+.step-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: color var(--transition-speed) ease;
+  white-space: nowrap;
+}
+
+.step-item.active .step-label,
+.step-item.completed .step-label {
+  color: var(--text-primary);
+}
+
+/* Loading state */
+.step-circle.loading {
+  animation: pulse-celeste 1.5s infinite;
+}
+
+@keyframes pulse-celeste {
+  0% { box-shadow: 0 0 0 0 rgba(0, 210, 255, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(0, 210, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 210, 255, 0); }
+}

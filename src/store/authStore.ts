@@ -4,7 +4,7 @@ import type { User, Session } from '@supabase/supabase-js';
 
 export interface Profile {
   id: string;
-  role: 'admin' | 'emprendedora';
+  role: 'admin' | 'emprendedora' | 'cliente';
   full_name: string;
   mfa_enabled: boolean;
   is_active: boolean;
@@ -35,9 +35,17 @@ export const useAuthStore = create<AuthState>((set) => ({
   isInitialized: false,
   
   initialize: async () => {
+    // Safety timeout to prevent infinite loading
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Auth initialization timeout')), 5000)
+    );
+
     try {
-      // 1. Get current session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // 1. Get current session with timeout
+      const { data: { session }, error: sessionError } = await Promise.race([
+        supabase.auth.getSession(),
+        timeoutPromise as Promise<never>
+      ]);
       
       if (sessionError) throw sessionError;
 
@@ -55,22 +63,21 @@ export const useAuthStore = create<AuthState>((set) => ({
           
         if (!profileError && profileData) {
           currentProfile = profileData;
-        } else {
-          // Si no es empleado, intentamos buscarlo como cliente por su email
-          // (Asumiendo que el cliente fue creado por el admin con ese email)
-          if (session.user.email) {
-            const { data: clientData, error: clientError } = await supabase
-              .from('clients')
-              .select('*')
-              .eq('email', session.user.email)
-              .single();
-              
-            if (!clientError && clientData) {
-              currentClientProfile = clientData;
-              // Link user_id to client if not already linked
-              if (!clientData.user_id) {
-                await supabase.from('clients').update({ user_id: session.user.id }).eq('id', clientData.id);
-              }
+        }
+
+        // Buscamos datos de cliente si no hay perfil o si el rol es 'cliente'
+        if ((!currentProfile || currentProfile.role === 'cliente') && session.user.email) {
+          const { data: clientData, error: clientError } = await supabase
+            .from('clients')
+            .select('*')
+            .eq('email', session.user.email)
+            .single();
+            
+          if (!clientError && clientData) {
+            currentClientProfile = clientData;
+            // Link user_id to client if not already linked
+            if (!clientData.user_id) {
+              await supabase.from('clients').update({ user_id: session.user.id }).eq('id', clientData.id);
             }
           }
         }
@@ -83,9 +90,14 @@ export const useAuthStore = create<AuthState>((set) => ({
         clientProfile: currentClientProfile,
         isInitialized: true 
       });
+    } catch (error) {
+      console.error('Initialization error:', error);
+      // Even on error, mark as initialized to allow the app to show login or handle the state
+      set({ isInitialized: true });
+    }
 
-      // 3. Listen to state changes
-      supabase.auth.onAuthStateChange(async (_event, newSession) => {
+    // 3. Listen to state changes
+    supabase.auth.onAuthStateChange(async (_event, newSession) => {
         let newProfile = null;
         let newClientProfile = null;
         
@@ -118,10 +130,6 @@ export const useAuthStore = create<AuthState>((set) => ({
           clientProfile: newClientProfile
         });
       });
-    } catch (error) {
-      console.error('Error initializing auth:', error);
-      set({ isInitialized: true });
-    }
   },
   
   signOut: async () => {

@@ -13,10 +13,12 @@ serve(async (req) => {
   }
 
   try {
-    const { orderId, amount, title, currency, buyer_email } = await req.json()
+    const { orderId, orderIds, amount, title, currency, buyer_email } = await req.json()
 
-    if (!orderId || !amount || !title) {
-      throw new Error('Missing required fields: orderId, amount, title')
+    const ids = orderIds || (orderId ? [orderId] : [])
+    
+    if (ids.length === 0 || !amount || !title) {
+      throw new Error('Missing required fields: orderIds (or orderId), amount, title')
     }
 
     const mpAccessToken = Deno.env.get('MERCADOPAGO_ACCESS_TOKEN_TEST') || Deno.env.get('MERCADOPAGO_ACCESS_TOKEN')
@@ -30,8 +32,6 @@ serve(async (req) => {
     const appUrl = req.headers.get('origin') || 'http://localhost:5173'
 
     // REGLA CRÍTICA DE MP: El email del payer NO puede ser el mismo que el dueño del Access Token.
-    // En sandbox: usar el email de la cuenta TEST COMPRADORA (variable MP_TEST_BUYER_EMAIL).
-    // En producción: usar el email real del cliente (buyer_email).
     const payerEmail = isSandbox
       ? (Deno.env.get('MP_TEST_BUYER_EMAIL') || 'test_user_uy@testuser.com')
       : (buyer_email || 'cliente@crmpunto.com')
@@ -40,7 +40,9 @@ serve(async (req) => {
       items: [
         {
           title: title,
-          description: `Pago de pedido #${orderId}`,
+          description: ids.length > 1 
+            ? `Pago consolidado de ${ids.length} pedidos`
+            : `Pago de pedido #${ids[0]}`,
           quantity: 1,
           currency_id: currency || 'UYU',
           unit_price: Number(amount)
@@ -50,24 +52,23 @@ serve(async (req) => {
         email: payerEmail,
         name: 'Cliente',
         surname: 'Portal',
-        // Identificación requerida para Uruguay (CI = Cédula de Identidad)
         identification: {
           type: 'CI',
           number: '12345678'
         }
       },
       back_urls: {
-        success: `${appUrl}/portal?payment=success&order_id=${orderId}`,
-        failure: `${appUrl}/portal?payment=failure&order_id=${orderId}`,
-        pending: `${appUrl}/portal?payment=pending&order_id=${orderId}`
+        success: `${appUrl}/portal?payment=success&order_ids=${ids.join(',')}`,
+        failure: `${appUrl}/portal?payment=failure&order_ids=${ids.join(',')}`,
+        pending: `${appUrl}/portal?payment=pending&order_ids=${ids.join(',')}`
       },
       auto_return: 'approved',
-      external_reference: orderId.toString(),
-      statement_descriptor: 'CRMPunto', // Aparece en el resumen de la tarjeta (max 13 chars)
+      external_reference: ids.join(','),
+      statement_descriptor: 'CRMPunto',
       notification_url: `https://slbohshctjwjldnvevnh.supabase.co/functions/v1/mp-webhook`
     }
 
-    console.log(`Creating MP preference | order: ${orderId} | amount: ${amount} | currency: ${currency || 'UYU'} | sandbox: ${isSandbox} | payerEmail: ${payerEmail}`)
+    console.log(`Creating MP preference | orders: ${ids.join(',')} | amount: ${amount} | sandbox: ${isSandbox}`)
 
     const response = await fetch('https://api.mercadopago.com/checkout/preferences', {
       method: 'POST',
@@ -82,12 +83,10 @@ serve(async (req) => {
 
     if (!response.ok) {
       console.error('Mercado Pago API error:', JSON.stringify(mpData))
-      throw new Error(mpData.message || `MP API error ${response.status}: ${JSON.stringify(mpData)}`)
+      throw new Error(mpData.message || `MP API error ${response.status}`)
     }
 
-    console.log(`MP preference created: ${mpData.id} | has sandbox_init_point: ${!!mpData.sandbox_init_point}`)
-
-    // Actualizar el estado del pago a 'pending' en nuestra base de datos
+    // Actualizar el estado del pago a 'pending' en todos los pedidos seleccionados
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     if (supabaseUrl && supabaseServiceKey) {
@@ -95,7 +94,7 @@ serve(async (req) => {
       await supabase
         .from('orders')
         .update({ payment_status: 'pending' })
-        .eq('id', orderId)
+        .in('id', ids)
     }
 
     return new Response(

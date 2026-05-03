@@ -15,6 +15,17 @@ interface SystemSettingsContextType {
   isUpdating: boolean;
 }
 
+const DEFAULT_BRANDING: BrandingSettings = {
+  app_name: 'CRM Punto',
+  primary_color: '#00d2ff',
+  primary_hover: '#00b8e6',
+  border_radius: '4px',
+  background_color: '#0a0a0a',
+  surface_color: '#1a1a1a',
+  text_color: '#ffffff',
+  enforce_deposit_on_move: false
+};
+
 const SystemSettingsContext = createContext<SystemSettingsContextType | undefined>(undefined);
 
 export function SystemSettingsProvider({ children }: { children: ReactNode }) {
@@ -30,7 +41,7 @@ export function SystemSettingsProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
       
       const branding = data.find(s => s.key === 'branding')?.value as BrandingSettings;
-      return { branding };
+      return { branding: { ...DEFAULT_BRANDING, ...branding } };
     }
   });
 

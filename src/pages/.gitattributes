@@ -1,3 +1,0 @@
-# Tratar todos los archivos como 'auto' para que Git maneje los finales de línea.
-# Se normalizarán a LF en el repositorio y se convertirán al nativo del SO en el checkout.
-* text=auto

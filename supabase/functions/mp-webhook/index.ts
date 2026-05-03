@@ -38,11 +38,11 @@ serve(async (req) => {
 
       const paymentInfo = await paymentResponse.json()
       
-      const orderId = paymentInfo.external_reference
-      const status = paymentInfo.status // 'approved', 'pending', 'rejected', etc.
+      const externalRef = paymentInfo.external_reference
+      const status = paymentInfo.status
 
-      if (orderId) {
-        // Inicializar Supabase Admin Client para evitar RLS
+      if (externalRef) {
+        const orderIds = externalRef.split(',')
         const supabaseUrl = Deno.env.get('SUPABASE_URL')
         const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
         
@@ -50,47 +50,69 @@ serve(async (req) => {
           const supabase = createClient(supabaseUrl, supabaseServiceKey)
           
           if (status === 'approved') {
-            // 1. Consultar el estado actual de la orden para el cálculo del depósito
-            const { data: orderData, error: fetchError } = await supabase
+            const { data: ordersData, error: fetchError } = await supabase
               .from('orders')
-              .select('total, deposit_amount')
-              .eq('id', orderId)
-              .single()
+              .select('id, total, deposit_amount, balance_due')
+              .in('id', orderIds)
 
             if (fetchError) {
-              console.error('Error fetching order:', fetchError)
-            } else if (orderData) {
-              const amountPaid = paymentInfo.transaction_amount || 0
-              const currentDeposit = orderData.deposit_amount || 0
-              const newDeposit = currentDeposit + amountPaid
-              const newBalanceDue = Math.max(0, orderData.total - newDeposit)
+              console.error('Error fetching orders:', fetchError)
+            } else if (ordersData && ordersData.length > 0) {
+              const totalPaid = paymentInfo.transaction_amount || 0
+              let remainingPayment = totalPaid
 
-              console.log(`Updating order ${orderId} (APPROVED): newDeposit=${newDeposit}, newBalance=${newBalanceDue}`)
+              console.log(`Processing APPROVED payment of ${totalPaid} for orders: ${orderIds.join(', ')}`)
 
-              const { error: updateError } = await supabase
-                .from('orders')
-                .update({ 
-                  deposit_amount: newDeposit,
-                  balance_due: newBalanceDue,
-                  payment_status: 'approved',
-                  payment_method: paymentInfo.payment_type_id || 'mercadopago'
-                })
-                .eq('id', orderId)
-                
-              if (updateError) console.error('Error updating order:', updateError)
+              for (const order of ordersData) {
+                if (remainingPayment <= 0) break
+
+                // Calculate how much to apply to this order
+                // We apply up to the balance_due, but if it's the last order or we have excess, we might apply more
+                const amountToApply = Math.min(order.balance_due || 0, remainingPayment)
+                const newDeposit = (order.deposit_amount || 0) + amountToApply
+                const newBalance = Math.max(0, (order.total || 0) - newDeposit)
+
+                console.log(`Updating order ${order.id}: applied ${amountToApply}, newDeposit=${newDeposit}, newBalance=${newBalance}`)
+
+                await supabase
+                  .from('orders')
+                  .update({ 
+                    deposit_amount: newDeposit,
+                    balance_due: newBalance,
+                    payment_status: 'approved',
+                    payment_method: paymentInfo.payment_type_id || 'mercadopago'
+                  })
+                  .eq('id', order.id)
+
+                remainingPayment -= amountToApply
+              }
+
+              // If there's still remaining payment (excess), apply it to the first order or log it
+              if (remainingPayment > 0) {
+                console.log(`Excess payment of ${remainingPayment} detected. Applying to first order.`)
+                const firstOrder = ordersData[0]
+                const { data: currentFirstOrder } = await supabase.from('orders').select('deposit_amount, total').eq('id', firstOrder.id).single()
+                if (currentFirstOrder) {
+                  const finalDeposit = currentFirstOrder.deposit_amount + remainingPayment
+                  await supabase.from('orders').update({ 
+                    deposit_amount: finalDeposit,
+                    balance_due: Math.max(0, currentFirstOrder.total - finalDeposit)
+                  }).eq('id', firstOrder.id)
+                }
+              }
             }
           } else if (status === 'rejected' || status === 'cancelled') {
-            console.log(`Updating order ${orderId} (REJECTED/CANCELLED): status=${status}`)
+            console.log(`Updating orders ${externalRef} (REJECTED/CANCELLED): status=${status}`)
             await supabase
               .from('orders')
               .update({ payment_status: 'rejected' })
-              .eq('id', orderId)
+              .in('id', orderIds)
           } else if (status === 'in_process' || status === 'pending') {
-            console.log(`Updating order ${orderId} (PENDING): status=${status}`)
+            console.log(`Updating orders ${externalRef} (PENDING): status=${status}`)
             await supabase
               .from('orders')
               .update({ payment_status: 'pending' })
-              .eq('id', orderId)
+              .in('id', orderIds)
           }
         }
       }

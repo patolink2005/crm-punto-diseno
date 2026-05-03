@@ -1,6 +1,7 @@
+// System Types Definition
 export interface Profile {
   id: string;
-  role: 'admin' | 'emprendedora';
+  role: 'admin' | 'emprendedora' | 'cliente';
   full_name: string;
   auth_id: string;
 }
@@ -84,6 +85,7 @@ export interface Order {
   deposit_amount: number;
   payment_method: string | null;
   balance_due: number;
+  design_url?: string;
 }
 
 export interface OrderItem {
@@ -120,3 +122,4 @@ export interface BrandingSettings {
   whatsapp_new_order_template?: string;
   whatsapp_pickup_template?: string;
 }
+export * from './audit';

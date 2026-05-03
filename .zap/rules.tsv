@@ -1,0 +1,7 @@
+# ZAP Baseline Scan Rules
+# ID	OUTCOME	REASON
+10010	IGNORE	(Cookie No HttpOnly Flag) - Frontend handled cookies often need JS access
+10011	IGNORE	(Cookie Without Secure Flag) - Useful for local dev, ZAP will warn if https is missing anyway
+10020	INFO	(X-Frame-Options Header Not Set)
+10021	INFO	(X-Content-Type-Options Header Not Set)
+40012	IGNORE	(Cross Domain Reference in HTML) - Common for CDNs and Google Fonts
