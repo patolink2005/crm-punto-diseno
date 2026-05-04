@@ -62,11 +62,11 @@ export function Clients() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       closeModal();
-      toast.success('Cliente creado correctamente');
+      alert('Cliente creado correctamente');
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Error desconocido';
-      toast.error('Error al crear cliente: ' + msg);
+      alert('Error al crear cliente: ' + msg);
     }
   });
 

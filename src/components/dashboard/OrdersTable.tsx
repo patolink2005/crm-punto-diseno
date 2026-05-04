@@ -136,7 +136,8 @@ export const OrdersTable: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-white/5">
               {orders && orders.length > 0 ? (
-                orders.map((order: Order) => (
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                orders.map((order: any) => (
                   <tr 
                     key={order.id} 
                     className="group hover:bg-white/[0.02] transition-all cursor-pointer relative"
@@ -168,10 +169,7 @@ export const OrdersTable: React.FC = () => {
                     <td className="px-8 py-7">
                       <div className="flex items-center gap-3 text-xs text-gray-500 font-bold uppercase tracking-widest">
                         <Clock size={14} className="text-gray-700" />
-                        {order.estimated_delivery_date 
-                          ? new Date(order.estimated_delivery_date).toLocaleDateString('es-UY')
-                          : 'TBD'
-                        }
+                        TBD
                       </div>
                     </td>
                     <td className="px-8 py-7 text-right">

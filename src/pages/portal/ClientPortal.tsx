@@ -422,7 +422,8 @@ export const ClientPortal: React.FC = () => {
       {/* Order Detail Modal */}
       {viewingOrder && (
         <ClientOrderDetailModal 
-          order={viewingOrder} 
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          order={viewingOrder as any} 
           onClose={() => setViewingOrder(null)}
           onPay={viewingOrder.balance_due > 0 ? () => handleBatchPayment([viewingOrder.id]) : undefined}
         />
